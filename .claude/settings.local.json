@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash \"/Users/hushuai/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.6/skills/brainstorming/scripts/start-server.sh\" --project-dir \"/Users/hushuai/AI code/claude code/TestProject\")",
+      "Read(//Users/hushuai/AI code/claude code/**)",
+      "Bash(npm create:*)",
+      "Bash(cargo --version)",
+      "Bash(npm --version)",
+      "Bash(npm install:*)",
+      "Bash(cargo update:*)",
+      "Bash(npx vue-tsc:*)",
+      "Bash(npx vite:*)",
+      "Bash(cargo check:*)",
+      "Read(//private/tmp/**)",
+      "Bash(rm -rf tauri-scaffold)",
+      "Bash(npx create-tauri-app@latest tauri-scaffold --template vue-ts --manager npm --yes)",
+      "Bash(cp -r /tmp/tauri-scaffold/* \"/Users/hushuai/AI code/claude code/TestProject/\")",
+      "Bash(cp -r /tmp/tauri-scaffold/.* \"/Users/hushuai/AI code/claude code/TestProject/\")",
+      "Bash(rm -rf /tmp/tauri-scaffold)",
+      "Bash(npm run:*)"
+    ]
+  }
+}
