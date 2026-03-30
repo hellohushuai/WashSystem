@@ -7,8 +7,7 @@
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "npm run build",
-    "frontendDist": "../dist",
-    "devtools": true
+    "frontendDist": "../dist"
   },
   "app": {
     "windows": [
@@ -26,7 +25,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["msi", "nsis", "dmg", "app", "ipa", "apk"],
+    "targets": "all",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -38,13 +37,6 @@
       "nsis": {
         "installMode": "currentUser"
       }
-    },
-    "android": {
-      "minSdkVersion": 23,
-      "targetSdkVersion": 34
-    },
-    "ios": {
-      "minimumOSVersion": "13.0"
     }
   }
 }
