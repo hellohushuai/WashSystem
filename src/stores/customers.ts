@@ -96,12 +96,13 @@ export const useCustomerStore = defineStore('customers', () => {
 
   async function loadCustomers(search?: string) {
     try {
+      // Load levels first
+      await loadLevels()
+      const levelMap = new Map(levels.value.map(l => [l.id, l]))
+
       let query = supabase
         .from('customers')
-        .select(`
-          *,
-          membership_levels (name, discount)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
       if (search) {
@@ -112,11 +113,14 @@ export const useCustomerStore = defineStore('customers', () => {
       if (error) throw error
 
       // Transform the data to flatten membership level info
-      customers.value = (data || []).map((customer: any) => ({
-        ...customer,
-        level_name: customer.membership_levels?.name,
-        discount: customer.membership_levels?.discount
-      }))
+      customers.value = (data || []).map((customer: any) => {
+        const level = customer.membership_level_id ? levelMap.get(customer.membership_level_id) : null
+        return {
+          ...customer,
+          level_name: level?.name,
+          discount: level?.discount
+        }
+      })
     } catch (error) {
       console.error('Failed to load customers:', error)
       throw error
@@ -125,22 +129,24 @@ export const useCustomerStore = defineStore('customers', () => {
 
   async function getCustomer(id: number): Promise<Customer | undefined> {
     try {
+      // Load levels first
+      await loadLevels()
+      const levelMap = new Map(levels.value.map(l => [l.id, l]))
+
       const { data, error } = await supabase
         .from('customers')
-        .select(`
-          *,
-          membership_levels (name, discount)
-        `)
+        .select('*')
         .eq('id', id)
         .single()
 
       if (error) throw error
 
       if (data) {
+        const level = data.membership_level_id ? levelMap.get(data.membership_level_id) : null
         return {
           ...data,
-          level_name: (data as any).membership_levels?.name,
-          discount: (data as any).membership_levels?.discount
+          level_name: level?.name,
+          discount: level?.discount
         }
       }
       return undefined
