@@ -1,5 +1,19 @@
 <script setup lang="ts">
+import { onMounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import AppLayout from './components/AppLayout.vue'
+import { auth } from '@/lib/supabase'
+
+const router = useRouter()
+
+onMounted(async () => {
+  await nextTick()
+  await router.isReady()
+  const { session } = await auth.getSession()
+  if (!session && router.currentRoute.value.meta.requiresAuth !== false) {
+    router.push('/login')
+  }
+})
 </script>
 
 <template>
