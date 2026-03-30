@@ -1,6 +1,8 @@
 # 干洗店管理系统
 
-一款功能完善的干洗店桌面应用程序，支持订单管理、客户管理、财务管理、库存管理和货架管理等功能。
+一款功能完善的干洗店桌面/移动应用程序，支持订单管理、客户管理、财务管理、库存管理和货架管理等功能。
+
+**最新版本**: v1.1.0
 
 ## 功能特性
 
@@ -31,7 +33,7 @@
 
 ### 货架管理
 - 可视化货架挂钩状态
-- 空闲/使用中/预留状态
+- 空闲/占用状态
 - 可设置总挂钩数量
 
 ### 基础数据管理
@@ -44,22 +46,26 @@
 - 衣物类型导入/导出（CSV）
 - 服务类型导入/导出（CSV）
 
+### 认证与同步 (v1.1.0 新增)
+- 用户登录/注册功能
+- 云端数据同步（Supabase）
+- 支持移动端访问
+
 ## 技术栈
 
 - **前端框架**: Vue 3 + TypeScript
 - **UI 组件库**: Element Plus
 - **状态管理**: Pinia
 - **桌面框架**: Tauri 2.x
-- **数据库**: SQLite
+- **移动端**: 响应式设计，支持 Android
+- **云数据库**: Supabase (PostgreSQL)
 - **构建工具**: Vite
 
-## 系统要求
+## 支持平台
 
-### Windows
-- Windows 10 (64位) 或更高版本
-
-### macOS
-- macOS 10.15 (Catalina) 或更高版本（Apple Silicon M1/M2/M3）
+- ✅ Windows 10+ (x64)
+- ✅ macOS 10.15+ (Apple Silicon)
+- ✅ Android (APK)
 
 ## 开发
 
@@ -78,8 +84,36 @@ npm run tauri dev
 ### 构建安装包
 
 ```bash
+# 构建所有平台
 npm run tauri build
+
+# 仅构建 Android
+npm run tauri build -- --target aarch64-linux-android
+
+# 仅构建 Windows
+npm run tauri build -- --target x86_64-pc-windows-gnu
+
+# 仅构建 macOS
+npm run tauri build -- --target aarch64-apple-darwin
 ```
+
+## 数据库
+
+系统使用 Supabase (PostgreSQL) 进行云端数据存储。数据库表结构定义见 `docs/supabase_schema.sql`。
+
+### 主要数据表
+- `customers` - 客户信息
+- `orders` - 订单
+- `order_items` - 订单项目
+- `membership_levels` - 会员等级
+- `financial_records` - 财务记录
+- `recharge_records` - 充值记录
+- `purchase_records` - 采购记录
+- `inventory` - 库存
+- `rack_hooks` - 货架挂钩
+- `rack_settings` - 货架设置
+- `garment_types` - 衣物类型
+- `service_types` - 服务类型
 
 ## 项目结构
 
@@ -87,6 +121,7 @@ npm run tauri build
 src/
 ├── components/     # 公共组件
 ├── db/            # 数据库相关
+├── lib/           # 工具库（Supabase 客户端）
 ├── router/        # 路由配置
 ├── stores/        # Pinia 状态管理
 ├── views/         # 页面视图
@@ -96,3 +131,17 @@ src/
 ## 许可证
 
 MIT
+
+## 更新日志
+
+### v1.1.0 (2026-03-30)
+- 新增：用户登录/注册功能
+- 新增：Supabase 云端数据同步
+- 新增：移动端响应式设计
+- 新增：Android APK 构建支持
+- 优化：多平台构建（Windows/macOS/Android）
+
+### v1.0.0 (初始版本)
+- 基础功能：订单、客户、财务、库存、货架管理
+- 数据导入导出
+- 会员等级系统
