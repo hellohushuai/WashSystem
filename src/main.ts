@@ -7,6 +7,14 @@ import 'element-plus/theme-chalk/dark/css-vars.css'
 import './styles/themes.css'
 import App from './App.vue'
 import router from './router'
+import { initDb } from './db'
+
+// Initialize database schema
+initDb().then(() => {
+  console.log('Database initialized')
+}).catch(err => {
+  console.error('Failed to initialize database:', err)
+})
 
 const app = createApp(App)
 app.use(createPinia())

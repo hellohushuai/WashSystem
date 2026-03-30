@@ -23,8 +23,11 @@ onMounted(async () => {
   todayIncome.value = stats.income
   freeHooks.value = await rackStore.getFreeCount()
 
-  await orderStore.loadOrders({ status: '未开始' })
-  pendingOrders.value = orderStore.orders.slice(0, 10)
+  // Load all orders and filter out completed ones
+  await orderStore.loadOrders()
+  pendingOrders.value = orderStore.orders
+    .filter(o => o.status !== '已结束')
+    .slice(0, 10)
 
   lowStockItems.value = await inventoryStore.getLowStockItems()
 })
@@ -49,7 +52,7 @@ onMounted(async () => {
     <el-card shadow="hover" style="margin-top: 16px; background: var(--card-bg); border-color: var(--border-color);">
       <template #header>
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span>待处理订单</span>
+          <span>进行中的订单</span>
           <el-button type="primary" size="small" @click="router.push('/orders/create')">新建订单</el-button>
         </div>
       </template>

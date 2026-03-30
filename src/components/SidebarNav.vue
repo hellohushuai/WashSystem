@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Fold, Expand, House, ShoppingCart, User, Money, Box, Grid } from '@element-plus/icons-vue'
+import { Fold, Expand, House, ShoppingCart, User, Money, Box, Grid, Setting } from '@element-plus/icons-vue'
 import ThemeSwitcher from './ThemeSwitcher.vue'
 
 const router = useRouter()
@@ -15,6 +15,8 @@ const menuItems = [
   { path: '/finance', name: 'finance', label: '财务管理', icon: Money },
   { path: '/inventory', name: 'inventory', label: '库存管理', icon: Box },
   { path: '/rack', name: 'rack', label: '货架管理', icon: Grid },
+  { path: '/settings/garment-types', name: 'garment-types', label: '衣物类型', icon: Setting },
+  { path: '/settings/service-types', name: 'service-types', label: '服务类型', icon: Setting },
 ]
 
 function navigateTo(path: string) {

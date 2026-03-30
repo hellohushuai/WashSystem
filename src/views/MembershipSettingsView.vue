@@ -10,11 +10,20 @@ const showDialog = ref(false)
 const editingId = ref<number | null>(null)
 const form = ref({ name: '', discount: 1.0, points_threshold: 0, points_rate: 1.0, sort_order: 0 })
 
-onMounted(() => store.loadLevels())
+onMounted(async () => {
+  await store.loadLevels()
+  console.log('Levels loaded:', store.levels)
+})
 
 function openAdd() {
   editingId.value = null
-  form.value = { name: '', discount: 1.0, points_threshold: 0, points_rate: 1.0, sort_order: 0 }
+  // Calculate sort_order - ensure we find the max from loaded levels
+  let maxSort = 0
+  if (store.levels && store.levels.length > 0) {
+    maxSort = store.levels.reduce((max, l) => Math.max(max, l.sort_order ?? 0), 0)
+  }
+  form.value = { name: '', discount: 1.0, points_threshold: 0, points_rate: 1.0, sort_order: maxSort + 1 }
+  console.log('Open add - levels:', store.levels, 'maxSort:', maxSort)
   showDialog.value = true
 }
 
@@ -25,18 +34,42 @@ function openEdit(level: MembershipLevel) {
 }
 
 async function handleSave() {
-  if (!form.value.name) {
+  const name = form.value.name?.trim()
+  if (!name) {
     ElMessage.warning('请填写等级名称')
     return
   }
-  if (editingId.value) {
-    await store.updateLevel(editingId.value, form.value)
-    ElMessage.success('修改成功')
-  } else {
-    await store.createLevel(form.value)
-    ElMessage.success('添加成功')
+
+  // Create a plain object to ensure data is passed correctly
+  const levelData = {
+    name: name,
+    discount: Number(form.value.discount) || 1.0,
+    points_threshold: Number(form.value.points_threshold) || 0,
+    points_rate: Number(form.value.points_rate) || 1.0,
+    sort_order: Number(form.value.sort_order) || 0
   }
-  showDialog.value = false
+
+  console.log('Saving level:', levelData)
+
+  try {
+    if (editingId.value) {
+      await store.updateLevel(editingId.value, levelData)
+      ElMessage.success('修改成功')
+    } else {
+      await store.createLevel(levelData)
+      ElMessage.success('添加成功')
+    }
+    showDialog.value = false
+    await store.loadLevels()
+  } catch (error: any) {
+    console.error('Save error:', error)
+    const errMsg = error?.message || error?.toString() || '操作失败'
+    ElMessage.error('错误: ' + errMsg)
+    ElMessageBox.alert('操作失败！\n\n错误信息: ' + errMsg, '创建会员等级失败', {
+      confirmButtonText: '确定',
+      type: 'error'
+    })
+  }
 }
 
 async function handleDelete(id: number) {

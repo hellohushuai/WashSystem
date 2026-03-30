@@ -2,23 +2,28 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useOrderStore, type Order, type OrderItem, ORDER_STATUS_PENDING, ORDER_STATUS_PAID, ORDER_STATUS_COMPLETED } from '@/stores/orders'
+import { useCustomerStore } from '@/stores/customers'
 import OrderStatusBadge from '@/components/OrderStatusBadge.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
 const store = useOrderStore()
+const customerStore = useCustomerStore()
 
 // Data
 const order = ref<Order | null>(null)
 const items = ref<OrderItem[]>([])
 const loading = ref(false)
+const customerBalance = ref(0)
 
 // Payment dialog
 const showPaymentDialog = ref(false)
 const paymentAmount = ref(0)
 const paymentMethod = ref('现金')
-const paymentMethods = ['现金', '微信', '支付宝', '银行卡', '会员卡']
+const useBalance = ref(false)
+const enableRoundDown = ref(false)
+const paymentMethods = ['现金', '微信', '支付宝', '银行卡']
 
 // Computed
 const orderId = computed(() => Number(route.params.id))
@@ -26,6 +31,23 @@ const orderId = computed(() => Number(route.params.id))
 const remainingAmount = computed(() => {
   if (!order.value) return 0
   return order.value.total_amount - order.value.paid_amount
+})
+
+// Calculate amount after round down
+const roundDownAmount = computed(() => {
+  if (!enableRoundDown.value || !remainingAmount.value) return 0
+  return Math.floor(remainingAmount.value)
+})
+
+// Amount to pay (after round down if enabled)
+const payAmount = computed(() => {
+  return enableRoundDown.value ? roundDownAmount.value : remainingAmount.value
+})
+
+// After using balance, remaining amount to pay
+const afterBalanceAmount = computed(() => {
+  if (!useBalance.value) return payAmount.value
+  return Math.max(0, payAmount.value - customerBalance.value)
 })
 
 const canPay = computed(() => {
@@ -65,6 +87,11 @@ async function loadData() {
     order.value = await store.getOrder(orderId.value) || null
     if (order.value) {
       items.value = await store.getOrderItems(orderId.value)
+      // Load customer balance if customer_id exists
+      if (order.value.customer_id) {
+        const customer = await customerStore.getCustomer(order.value.customer_id)
+        customerBalance.value = customer?.balance || 0
+      }
     }
   } catch (e: any) {
     ElMessage.error(e.message || '加载订单失败')
@@ -74,42 +101,82 @@ async function loadData() {
 }
 
 // Actions
+function openPaymentDialog() {
+  paymentAmount.value = payAmount.value
+  useBalance.value = false
+  enableRoundDown.value = false
+  paymentMethod.value = '现金'
+  showPaymentDialog.value = true
+}
+
 async function handlePayment() {
-  if (paymentAmount.value <= 0) {
-    ElMessage.warning('请输入有效金额')
-    return
-  }
-  if (paymentAmount.value > remainingAmount.value) {
-    ElMessage.warning('付款金额不能超过待付金额')
+  const amount = enableRoundDown.value ? roundDownAmount.value : remainingAmount.value
+
+  if (amount <= 0) {
+    ElMessage.warning('无需付款')
     return
   }
 
+  let balanceToUse = 0
+  let actualPayment = amount
+
+  // If using balance
+  if (useBalance.value) {
+    if (customerBalance.value <= 0) {
+      ElMessage.warning('账户余额为0，无法使用余额支付')
+      return
+    }
+    balanceToUse = Math.min(customerBalance.value, amount)
+    actualPayment = amount - balanceToUse
+
+    if (balanceToUse < amount && actualPayment > 0 && !paymentMethod.value) {
+      ElMessage.warning('请选择支付方式')
+      return
+    }
+  }
+
+  // Confirm payment
   try {
-    await store.recordPayment(orderId.value, paymentAmount.value, paymentMethod.value)
+    await ElMessageBox.confirm(
+      `付款金额: ¥${amount.toFixed(2)}\n` +
+      (balanceToUse > 0 ? `使用余额: ¥${balanceToUse.toFixed(2)}\n` : '') +
+      (actualPayment > 0 ? `实际支付: ¥${actualPayment.toFixed(2)}\n` : '') +
+      `支付方式: ${useBalance.value ? (actualPayment > 0 ? paymentMethod.value : '余额') : paymentMethod.value}`,
+      '确认付款',
+      { type: 'info' }
+    )
+  } catch {
+    return // User cancelled
+  }
+
+  try {
+    // Use balance first and record balance payment
+    if (balanceToUse > 0) {
+      const success = await customerStore.useBalance(order.value!.customer_id, balanceToUse)
+      if (!success) {
+        ElMessage.error('余额不足，支付失败')
+        return
+      }
+      // Record balance payment in financial records
+      await store.recordBalancePayment(orderId.value, balanceToUse)
+    }
+
+    // Record payment for remaining amount
+    if (actualPayment > 0) {
+      await store.recordPayment(orderId.value, actualPayment, paymentMethod.value)
+    }
+
+    // If fully paid, update status
+    const totalPaid = (useBalance.value ? balanceToUse : 0) + actualPayment
+    if (totalPaid >= amount) {
+      await store.updateStatus(orderId.value, ORDER_STATUS_PAID)
+    }
+
     ElMessage.success('付款成功')
     showPaymentDialog.value = false
-    paymentAmount.value = 0
-    paymentMethod.value = '现金'
     await loadData()
   } catch (e: any) {
     ElMessage.error(e.message || '付款失败')
-  }
-}
-
-async function handlePayFull() {
-  try {
-    await ElMessageBox.confirm(
-      `确定要将订单状态改为"已付款"并自动付清全部费用吗？`,
-      '确认付款',
-      { type: 'warning' }
-    )
-    await store.updateStatus(orderId.value, ORDER_STATUS_PAID)
-    ElMessage.success('状态已更新为已付款')
-    await loadData()
-  } catch (e: any) {
-    if (e !== 'cancel') {
-      ElMessage.error(e.message || '操作失败')
-    }
   }
 }
 
@@ -277,20 +344,12 @@ function goBack() {
             </template>
             <div style="display: flex; flex-direction: column; gap: 12px;">
               <el-button
-                v-if="order.status === ORDER_STATUS_PENDING"
-                type="primary"
-                style="width: 100%;"
-                @click="handlePayFull"
-              >
-                确认付款（全额）
-              </el-button>
-              <el-button
                 v-if="canPay"
                 type="warning"
                 style="width: 100%;"
-                @click="showPaymentDialog = true"
+                @click="openPaymentDialog"
               >
-                部分付款
+                付款
               </el-button>
               <el-button
                 v-if="canComplete"
@@ -314,20 +373,64 @@ function goBack() {
     </div>
 
     <!-- Payment Dialog -->
-    <el-dialog v-model="showPaymentDialog" title="部分付款" width="400px">
+    <el-dialog v-model="showPaymentDialog" title="订单付款" width="450px">
       <el-form label-width="80px">
         <el-form-item label="待付金额">
           <div style="font-size: 18px; font-weight: 600; color: var(--el-color-danger);">
-            {{ formatPrice(remainingAmount) }}
+            ¥{{ remainingAmount.toFixed(2) }}
           </div>
         </el-form-item>
-        <el-form-item label="付款金额">
-          <el-input-number v-model="paymentAmount" :min="0.01" :max="remainingAmount" :precision="2" style="width: 100%;" />
+
+        <!-- Round down option -->
+        <el-form-item label="抹零">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <el-switch v-model="enableRoundDown" />
+            <span style="color: var(--text-secondary);">抹零（向下取整）</span>
+          </div>
+          <div v-if="enableRoundDown && roundDownAmount > 0" style="margin-top: 4px; color: var(--text-secondary);">
+            抹零后金额: <span style="color: var(--el-color-success); font-weight: 600;">¥{{ roundDownAmount.toFixed(2) }}</span>
+            <span v-if="roundDownAmount < remainingAmount" style="color: var(--el-color-warning); margin-left: 8px;">
+              (减免 ¥{{ (remainingAmount - roundDownAmount).toFixed(2) }})
+            </span>
+          </div>
         </el-form-item>
-        <el-form-item label="付款方式">
+
+        <!-- Balance option -->
+        <el-form-item label="账户余额">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--el-color-success); font-weight: 600;">¥{{ customerBalance.toFixed(2) }}</span>
+            <el-switch v-model="useBalance" :disabled="customerBalance <= 0" />
+            <span style="color: var(--text-secondary);">使用余额支付</span>
+          </div>
+          <div v-if="useBalance && customerBalance > 0" style="margin-top: 4px; color: var(--text-secondary);">
+            余额可抵扣: <span style="color: var(--el-color-warning);">¥{{ Math.min(customerBalance, payAmount).toFixed(2) }}</span>
+          </div>
+        </el-form-item>
+
+        <!-- Payment summary -->
+        <el-divider />
+
+        <el-form-item label="实付金额">
+          <div style="font-size: 20px; font-weight: 600; color: var(--el-color-danger);">
+            ¥{{ afterBalanceAmount.toFixed(2) }}
+          </div>
+          <div v-if="useBalance && customerBalance > 0 && afterBalanceAmount < payAmount" style="color: var(--text-secondary); font-size: 12px;">
+            (余额抵扣 ¥{{ (payAmount - afterBalanceAmount).toFixed(2) }})
+          </div>
+        </el-form-item>
+
+        <!-- Payment method (show when there's remaining amount) -->
+        <el-form-item label="支付方式" v-if="afterBalanceAmount > 0">
           <el-select v-model="paymentMethod" style="width: 100%;">
             <el-option v-for="m in paymentMethods" :key="m" :label="m" :value="m" />
           </el-select>
+        </el-form-item>
+
+        <!-- Balance insufficient warning -->
+        <el-form-item v-if="useBalance && customerBalance < payAmount && afterBalanceAmount > 0">
+          <el-alert type="warning" :closable="false" show-icon>
+            余额不足，还需支付 ¥{{ afterBalanceAmount.toFixed(2) }}
+          </el-alert>
         </el-form-item>
       </el-form>
       <template #footer>

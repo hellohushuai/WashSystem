@@ -4,12 +4,14 @@ import { useRouter } from 'vue-router'
 import { useOrderStore } from '@/stores/orders'
 import { useCustomerStore, type Customer } from '@/stores/customers'
 import { useRackStore } from '@/stores/rack'
+import { useTypesStore } from '@/stores/types'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const orderStore = useOrderStore()
 const customerStore = useCustomerStore()
 const rackStore = useRackStore()
+const typesStore = useTypesStore()
 
 // Form state
 const selectedCustomerId = ref<number | null>(null)
@@ -47,19 +49,36 @@ const canSubmit = computed(() => {
   return selectedCustomerId.value !== null && items.value.length > 0
 })
 
-// Common garment types and service types
-const garmentTypes = [
-  '西服', '衬衫', '裤子', '裙子', '外套', '大衣', '羽绒服',
-  'T恤', '羊毛衫', '领带', '领结', '皮带', '床单被罩', '窗帘', '其他'
-]
+// Get garment types and service types from store
+const garmentTypes = computed(() => {
+  return typesStore.garmentTypes.filter(t => t.is_active).map(t => ({ name: t.name, price: t.price }))
+})
 
-const serviceTypes = [
-  '干洗', '水洗', '熨烫', '修补', '染色', '去渍', '特殊护理'
-]
+const serviceTypes = computed(() => {
+  return typesStore.serviceTypes.filter(t => t.is_active).map(t => ({ name: t.name, price: t.price }))
+})
+
+// Auto-calculate price when garment_type or service_type changes
+function calculatePrice(item: { garment_type: string; service_type: string }): number {
+  const garment = garmentTypes.value.find(g => g.name === item.garment_type)
+  const service = serviceTypes.value.find(s => s.name === item.service_type)
+  return (garment?.price || 0) + (service?.price || 0)
+}
+
+function updatePrice(item: { id: number; garment_type: string; service_type: string; price: number; notes: string }) {
+  const idx = items.value.findIndex(i => i.id === item.id)
+  if (idx > -1) {
+    items.value[idx].price = calculatePrice(item)
+  }
+}
 
 // Load data
 onMounted(async () => {
-  await customerStore.loadCustomers()
+  await Promise.all([
+    customerStore.loadCustomers(),
+    typesStore.loadGarmentTypes(),
+    typesStore.loadServiceTypes()
+  ])
   freeHookCount.value = await rackStore.getFreeCount()
 })
 
@@ -195,15 +214,15 @@ function goBack() {
           <el-table :data="items" empty-text="请点击上方添加衣物" style="width: 100%;">
             <el-table-column label="衣物类型" width="140">
               <template #default="{ row }">
-                <el-select v-model="row.garment_type" placeholder="选择类型" filterable>
-                  <el-option v-for="t in garmentTypes" :key="t" :label="t" :value="t" />
+                <el-select v-model="row.garment_type" placeholder="选择类型" filterable @change="updatePrice(row)">
+                  <el-option v-for="t in garmentTypes" :key="t.name" :label="t.name" :value="t.name" />
                 </el-select>
               </template>
             </el-table-column>
             <el-table-column label="服务类型" width="140">
               <template #default="{ row }">
-                <el-select v-model="row.service_type" placeholder="选择服务" filterable>
-                  <el-option v-for="t in serviceTypes" :key="t" :label="t" :value="t" />
+                <el-select v-model="row.service_type" placeholder="选择服务" filterable @change="updatePrice(row)">
+                  <el-option v-for="t in serviceTypes" :key="t.name" :label="t.name" :value="t.name" />
                 </el-select>
               </template>
             </el-table-column>

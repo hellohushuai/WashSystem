@@ -248,6 +248,24 @@ export const useOrderStore = defineStore('orders', () => {
         throw new Error(`无效的订单状态: ${newStatus}`)
       }
 
+      // Get current order status for transition validation
+      const order = await getOrder(orderId)
+      if (!order) {
+        throw new Error('订单不存在')
+      }
+      const currentStatus = order.status
+
+      // Validate status transition
+      const validTransitions: Record<string, string[]> = {
+        [ORDER_STATUS_PENDING]: [ORDER_STATUS_PAID],
+        [ORDER_STATUS_PAID]: [ORDER_STATUS_COMPLETED],
+        [ORDER_STATUS_COMPLETED]: [],
+      }
+      const allowedNextStatuses = validTransitions[currentStatus] || []
+      if (!allowedNextStatuses.includes(newStatus)) {
+        throw new Error(`无效的状态转换: ${currentStatus} → ${newStatus}`)
+      }
+
       if (newStatus === ORDER_STATUS_COMPLETED) {
         // Verify: all items picked up AND fully paid
         const items = await getOrderItems(orderId)
@@ -255,22 +273,26 @@ export const useOrderStore = defineStore('orders', () => {
         if (!allPickedUp) {
           throw new Error('还有衣物未取走，无法结束订单')
         }
-        const order = await getOrder(orderId)
-        if (order && order.paid_amount < order.total_amount) {
+        if (order.paid_amount < order.total_amount) {
           throw new Error('尚未付清全部费用，无法结束订单')
+        }
+        // Release all hooks for items in this order
+        const rackStore = useRackStore()
+        for (const item of items) {
+          if (item.hook_no !== null) {
+            await rackStore.releaseHook(item.hook_no)
+          }
         }
         await execute(
           `UPDATE orders SET status = ?, picked_up_at = datetime('now', 'localtime') WHERE id = ?`,
           [newStatus, orderId]
         )
       } else if (newStatus === ORDER_STATUS_PAID) {
-        const order = await getOrder(orderId)
-        if (order) {
-          await execute(
-            `UPDATE orders SET status = ?, paid_amount = ?, completed_at = datetime('now', 'localtime') WHERE id = ?`,
-            [newStatus, order.total_amount, orderId]
-          )
-        }
+        // Auto-pay full amount when status changes to PAID
+        await execute(
+          `UPDATE orders SET status = ?, paid_amount = ?, completed_at = datetime('now', 'localtime') WHERE id = ?`,
+          [newStatus, order.total_amount, orderId]
+        )
       } else {
         await execute('UPDATE orders SET status = ? WHERE id = ?', [newStatus, orderId])
       }
@@ -293,13 +315,23 @@ export const useOrderStore = defineStore('orders', () => {
         throw new Error('付款方式不能为空')
       }
 
+      // Get order to validate payment amount
+      const order = await getOrder(orderId)
+      if (!order) {
+        throw new Error('订单不存在')
+      }
+      const remainingBalance = order.total_amount - order.paid_amount
+      if (amount > remainingBalance) {
+        throw new Error(`付款金额超过待付金额: 还需 ${remainingBalance} 元`)
+      }
+
       await execute(
         'UPDATE orders SET paid_amount = paid_amount + ?, payment_method = ? WHERE id = ?',
         [amount, method, orderId]
       )
       // Auto-create financial record
       await execute(
-        "INSERT INTO financial_records (type, amount, category, related_order_id, description) VALUES ('收入', ?, '订单收入', ?, ?)",
+        "INSERT INTO financial_records (type, amount, category, source, related_order_id, description) VALUES ('收入', ?, '订单收入', 'order', ?, ?)",
         [amount, orderId, `订单收款`]
       )
     } catch (error) {
@@ -353,9 +385,24 @@ export const useOrderStore = defineStore('orders', () => {
     }
   }
 
+  // Record balance payment (without updating payment_method since it's internal)
+  async function recordBalancePayment(orderId: number, amount: number) {
+    try {
+      await execute('UPDATE orders SET paid_amount = paid_amount + ? WHERE id = ?', [amount, orderId])
+      // Record as financial income - source is 'order' but payment method is '余额'
+      await execute(
+        "INSERT INTO financial_records (type, amount, category, source, related_order_id, description) VALUES ('收入', ?, '订单收入', 'order', ?, ?)",
+        [amount, orderId, '余额支付']
+      )
+    } catch (error) {
+      console.error('Failed to record balance payment:', error)
+      throw error
+    }
+  }
+
   return {
     orders,
     loadOrders, getOrder, getOrderItems, createOrder,
-    updateStatus, recordPayment, pickUpItem, getTodayStats,
+    updateStatus, recordPayment, recordBalancePayment, pickUpItem, getTodayStats,
   }
 })

@@ -14,6 +14,10 @@ const customer = ref<Customer | null>(null)
 const orders = ref<Order[]>([])
 const editing = ref(false)
 const form = ref({ name: '', phone: '', membership_level_id: undefined as number | undefined, notes: '' })
+const showRechargeDialog = ref(false)
+const rechargeAmount = ref(100)
+const rechargePaymentMethod = ref('现金')
+const paymentMethods = ['现金', '微信', '支付宝', '银行卡']
 
 onMounted(async () => {
   await customerStore.loadLevels()
@@ -36,6 +40,21 @@ async function handleSave() {
     ElMessage.success('保存成功')
   } catch (e: any) {
     ElMessage.error(e.message || '保存失败')
+  }
+}
+
+async function handleRecharge() {
+  if (!customer.value || rechargeAmount.value <= 0) {
+    ElMessage.warning('请输入有效的充值金额')
+    return
+  }
+  try {
+    const newBalance = await customerStore.recharge(customer.value.id, rechargeAmount.value, rechargePaymentMethod.value)
+    customer.value = await customerStore.getCustomer(customer.value.id) ?? null
+    showRechargeDialog.value = false
+    ElMessage.success(`充值成功！当前余额：¥${newBalance.toFixed(2)}`)
+  } catch (e: any) {
+    ElMessage.error(e.message || '充值失败')
   }
 }
 </script>
@@ -72,6 +91,10 @@ async function handleSave() {
         <el-descriptions-item label="姓名">{{ customer.name }}</el-descriptions-item>
         <el-descriptions-item label="手机号">{{ customer.phone }}</el-descriptions-item>
         <el-descriptions-item label="会员等级">{{ customer.level_name || '无' }}</el-descriptions-item>
+        <el-descriptions-item label="账户余额">
+          <span style="color: var(--el-color-success); font-weight: 600;">¥{{ (customer.balance || 0).toFixed(2) }}</span>
+          <el-button type="primary" link size="small" style="margin-left: 8px;" @click="showRechargeDialog = true">充值</el-button>
+        </el-descriptions-item>
         <el-descriptions-item label="积分">{{ customer.points }}</el-descriptions-item>
         <el-descriptions-item label="注册时间">{{ customer.created_at }}</el-descriptions-item>
         <el-descriptions-item label="备注">{{ customer.notes || '-' }}</el-descriptions-item>
@@ -94,5 +117,33 @@ async function handleSave() {
         </el-table-column>
       </el-table>
     </el-card>
+
+    <!-- Recharge Dialog -->
+    <el-dialog v-model="showRechargeDialog" title="账户充值" width="400px">
+      <el-form label-width="80px">
+        <el-form-item label="当前余额">
+          <span style="font-size: 18px; color: var(--el-color-success); font-weight: 600;">
+            ¥{{ (customer?.balance || 0).toFixed(2) }}
+          </span>
+        </el-form-item>
+        <el-form-item label="充值金额">
+          <el-input-number v-model="rechargeAmount" :min="1" :step="100" :precision="2" />
+        </el-form-item>
+        <el-form-item label="快捷充值">
+          <el-button v-for="amt in [100, 200, 500, 1000]" :key="amt" @click="rechargeAmount = amt" style="margin-right: 8px;">
+            ¥{{ amt }}
+          </el-button>
+        </el-form-item>
+        <el-form-item label="支付方式">
+          <el-select v-model="rechargePaymentMethod" style="width: 100%;">
+            <el-option v-for="m in paymentMethods" :key="m" :label="m" :value="m" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showRechargeDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleRecharge">确认充值</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>

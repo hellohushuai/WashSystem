@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useOrderStore } from '@/stores/orders'
 import OrderStatusBadge from '@/components/OrderStatusBadge.vue'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const store = useOrderStore()
@@ -12,6 +13,47 @@ const statusFilter = ref<string>('')
 const search = ref('')
 const dateFrom = ref('')
 const dateTo = ref('')
+
+// Export function
+function exportToCSV() {
+  const headers = ['订单号', '客户姓名', '手机号', '状态', '衣物数', '订单金额', '已付金额', '支付方式', '创建时间']
+  const rows = store.orders.map(o => [
+    o.order_no,
+    o.customer_name,
+    o.customer_phone,
+    o.status,
+    o.item_count?.toString() || '0',
+    o.total_amount.toString(),
+    o.paid_amount?.toString() || '0',
+    o.payment_method || '',
+    o.created_at
+  ])
+
+  const csvContent = [headers, ...rows]
+    .map(row => row.map(cell => `"${cell || ''}"`).join(','))
+    .join('\n')
+
+  const BOM = '\uFEFF'
+  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+
+  // Include filter info in filename
+  let filename = '订单列表'
+  if (dateFrom.value || dateTo.value) {
+    filename += `_${dateFrom.value || '开始'}_${dateTo.value || '结束'}`
+  }
+  if (search.value) {
+    filename += `_${search.value}`
+  }
+  filename += `_${new Date().toISOString().split('T')[0]}`
+
+  link.download = `${filename}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('导出成功')
+}
 
 // Computed
 const statusOptions = [
@@ -58,7 +100,10 @@ function formatDate(date: string): string {
   <div>
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
       <h2>订单管理</h2>
-      <el-button type="primary" @click="router.push('/orders/create')">新建订单</el-button>
+      <div style="display: flex; gap: 8px;">
+        <el-button @click="exportToCSV">导出</el-button>
+        <el-button type="primary" @click="router.push('/orders/create')">新建订单</el-button>
+      </div>
     </div>
 
     <!-- Filters -->
