@@ -53,7 +53,7 @@ async function handleRegister() {
   try {
     const { error } = await auth.signUp(registerForm.value.email, registerForm.value.password)
     if (error) throw error
-    ElMessage.success('注册成功，请登录')
+    ElMessage.success('注册成功！请前往邮箱点击验证链接完成验证后登录')
     showRegister.value = false
     form.value.email = registerForm.value.email
     registerForm.value = { email: '', password: '', confirmPassword: '' }
