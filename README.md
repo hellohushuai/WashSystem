@@ -1,7 +1,98 @@
-# Tauri + Vue + TypeScript
+# 干洗店管理系统
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+一款功能完善的干洗店桌面应用程序，支持订单管理、客户管理、财务管理、库存管理和货架管理等功能。
 
-## Recommended IDE Setup
+## 功能特性
 
-- [VS Code](https://code.visualstudio.com/) + [Vue - Official](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+### 订单管理
+- 创建订单：选择客户，添加衣物类型和服务类型，系统自动计算价格
+- 订单列表：查看所有订单，支持状态、日期、客户筛选
+- 订单详情：查看订单详情，进行付款、取衣等操作
+- 付款功能：支持余额支付、抹零、多种支付方式（现金/微信/支付宝/银行卡）
+
+### 客户管理
+- 客户列表：查看所有客户信息
+- 客户详情：查看客户历史订单、账户余额
+- 会员等级：设置不同等级的折扣和积分倍率
+- 账户充值：支持充值，记录充值记录
+
+### 财务管理
+- 财务概览：收入合计、支出合计、净利润统计
+- 收入明细：订单收入、充值收入、其他收入
+- 支出明细：采购支出、其他支出
+- 采购记录：管理耗材采购支出（自动同步到库存）
+- 手工记账：手动添加收支记录
+- 日结/月报表：按日期统计财务数据
+
+### 库存管理
+- 管理库存物品
+- 调整库存数量
+- 设置最低库存提醒
+
+### 货架管理
+- 可视化货架挂钩状态
+- 空闲/使用中/预留状态
+- 可设置总挂钩数量
+
+### 基础数据管理
+- 衣物类型管理：添加、编辑、删除衣物类型，设置价格
+- 服务类型管理：添加、编辑、删除服务类型，设置加价
+
+### 数据导入导出
+- 客户数据导入/导出（CSV）
+- 订单数据导出（CSV）
+- 衣物类型导入/导出（CSV）
+- 服务类型导入/导出（CSV）
+
+## 技术栈
+
+- **前端框架**: Vue 3 + TypeScript
+- **UI 组件库**: Element Plus
+- **状态管理**: Pinia
+- **桌面框架**: Tauri 2.x
+- **数据库**: SQLite
+- **构建工具**: Vite
+
+## 系统要求
+
+### Windows
+- Windows 10 (64位) 或更高版本
+
+### macOS
+- macOS 10.15 (Catalina) 或更高版本（Apple Silicon M1/M2/M3）
+
+## 开发
+
+### 安装依赖
+
+```bash
+npm install
+```
+
+### 开发模式
+
+```bash
+npm run tauri dev
+```
+
+### 构建安装包
+
+```bash
+npm run tauri build
+```
+
+## 项目结构
+
+```
+src/
+├── components/     # 公共组件
+├── db/            # 数据库相关
+├── router/        # 路由配置
+├── stores/        # Pinia 状态管理
+├── views/         # 页面视图
+└── App.vue        # 根组件
+```
+
+## 许可证
+
+MIT
