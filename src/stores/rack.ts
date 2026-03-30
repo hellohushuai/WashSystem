@@ -1,10 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { query, execute } from '@/db'
-
-// Status constants
-const HOOK_STATUS_FREE = '空闲'
-const HOOK_STATUS_OCCUPIED = '占用'
+import { supabase } from '@/lib/supabase'
 
 // Validation constants
 const MIN_HOOKS = 1
@@ -28,14 +24,24 @@ export const useRackStore = defineStore('rack', () => {
 
   async function loadHooks() {
     try {
-      hooks.value = await query<RackHook>(`
-        SELECT rh.*, oi.garment_type, c.name as customer_name, o.order_no, o.id as order_id
-        FROM rack_hooks rh
-        LEFT JOIN order_items oi ON rh.order_item_id = oi.id
-        LEFT JOIN orders o ON oi.order_id = o.id
-        LEFT JOIN customers c ON o.customer_id = c.id
-        ORDER BY rh.hook_no
-      `)
+      const { data, error } = await supabase
+        .from('rack_hooks')
+        .select(`
+          *,
+          order_items (garment_type),
+          orders (order_no, customer_id, customers (name))
+        `)
+        .order('hook_no')
+      if (error) throw error
+
+      // Transform data to flatten joined fields
+      hooks.value = (data || []).map((hook: any) => ({
+        ...hook,
+        garment_type: hook.order_items?.garment_type,
+        order_no: hook.orders?.order_no,
+        order_id: hook.orders?.id,
+        customer_name: hook.orders?.customers?.name
+      }))
     } catch (error) {
       console.error('Failed to load hooks:', error)
       throw error
@@ -44,9 +50,14 @@ export const useRackStore = defineStore('rack', () => {
 
   async function loadSettings() {
     try {
-      const rows = await query<{ total_hooks: number }>('SELECT total_hooks FROM rack_settings WHERE id = 1')
-      if (rows.length > 0) {
-        totalHooks.value = rows[0].total_hooks
+      const { data, error } = await supabase
+        .from('rack_settings')
+        .select('total_hooks')
+        .eq('id', 1)
+        .single()
+      if (error) throw error
+      if (data) {
+        totalHooks.value = data.total_hooks
       }
     } catch (error) {
       console.error('Failed to load settings:', error)
@@ -56,15 +67,21 @@ export const useRackStore = defineStore('rack', () => {
 
   async function allocateHook(orderItemId: number): Promise<number | null> {
     try {
-      const free = await query<{ hook_no: number }>(
-        `SELECT hook_no FROM rack_hooks WHERE status = '${HOOK_STATUS_FREE}' ORDER BY hook_no LIMIT 1`
-      )
-      if (free.length === 0) return null
+      const { data: free, error: fetchError } = await supabase
+        .from('rack_hooks')
+        .select('hook_no')
+        .eq('status', '空闲')
+        .order('hook_no')
+        .limit(1)
+      if (fetchError) throw fetchError
+      if (!free || free.length === 0) return null
       const hookNo = free[0].hook_no
-      await execute(
-        `UPDATE rack_hooks SET status = '${HOOK_STATUS_OCCUPIED}', order_item_id = ? WHERE hook_no = ?`,
-        [orderItemId, hookNo]
-      )
+
+      const { error } = await supabase
+        .from('rack_hooks')
+        .update({ status: '占用', order_item_id: orderItemId })
+        .eq('hook_no', hookNo)
+      if (error) throw error
       return hookNo
     } catch (error) {
       console.error('Failed to allocate hook:', error)
@@ -75,17 +92,20 @@ export const useRackStore = defineStore('rack', () => {
   async function releaseHook(hookNo: number) {
     try {
       // Check if hook exists
-      const existing = await query<{ id: number }>(
-        'SELECT id FROM rack_hooks WHERE hook_no = ?',
-        [hookNo]
-      )
-      if (existing.length === 0) {
+      const { data: existing, error: fetchError } = await supabase
+        .from('rack_hooks')
+        .select('id')
+        .eq('hook_no', hookNo)
+        .single()
+      if (fetchError) throw fetchError
+      if (!existing) {
         throw new Error(`挂钩 ${hookNo} 不存在`)
       }
-      await execute(
-        `UPDATE rack_hooks SET status = '${HOOK_STATUS_FREE}', order_item_id = NULL WHERE hook_no = ?`,
-        [hookNo]
-      )
+      const { error } = await supabase
+        .from('rack_hooks')
+        .update({ status: '空闲', order_item_id: null })
+        .eq('hook_no', hookNo)
+      if (error) throw error
     } catch (error) {
       console.error('Failed to release hook:', error)
       throw error
@@ -102,35 +122,48 @@ export const useRackStore = defineStore('rack', () => {
     }
 
     try {
-      const currentMax = await query<{ max_no: number }>(
-        'SELECT COALESCE(MAX(hook_no), 0) as max_no FROM rack_hooks'
-      )
-      const maxNo = currentMax[0].max_no
+      const { data: currentMax } = await supabase
+        .from('rack_hooks')
+        .select('hook_no')
+        .order('hook_no', { ascending: false })
+        .limit(1)
+      const maxNo = currentMax && currentMax.length > 0 ? currentMax[0].hook_no : 0
       let hooksChanged = false
 
       if (newTotal > maxNo) {
         // Add new hooks
         for (let i = maxNo + 1; i <= newTotal; i++) {
-          await execute(
-            `INSERT OR IGNORE INTO rack_hooks (hook_no, status) VALUES (?, '${HOOK_STATUS_FREE}')`,
-            [i]
-          )
+          const { error } = await supabase
+            .from('rack_hooks')
+            .insert({ hook_no: i, status: '空闲' })
+          if (error && error.code !== '23505') throw error // Ignore duplicate key error
         }
         hooksChanged = true
       } else if (newTotal < maxNo) {
         // Only remove free hooks from the end
-        const occupied = await query<{ hook_no: number }>(
-          `SELECT hook_no FROM rack_hooks WHERE hook_no > ? AND status = '${HOOK_STATUS_OCCUPIED}'`,
-          [newTotal]
-        )
-        if (occupied.length > 0) {
+        const { data: occupied } = await supabase
+          .from('rack_hooks')
+          .select('hook_no')
+          .gt('hook_no', newTotal)
+          .eq('status', '占用')
+        if (occupied && occupied.length > 0) {
           throw new Error(`无法缩减：挂钩 ${occupied.map(h => h.hook_no).join(', ')} 正在使用中`)
         }
-        await execute('DELETE FROM rack_hooks WHERE hook_no > ?', [newTotal])
+        const { error: deleteError } = await supabase
+          .from('rack_hooks')
+          .delete()
+          .gt('hook_no', newTotal)
+        if (deleteError) throw deleteError
         hooksChanged = true
       }
 
-      await execute('UPDATE rack_settings SET total_hooks = ? WHERE id = 1', [newTotal])
+      // Update settings
+      const { error: updateError } = await supabase
+        .from('rack_settings')
+        .update({ total_hooks: newTotal })
+        .eq('id', 1)
+      if (updateError) throw updateError
+
       totalHooks.value = newTotal
       if (hooksChanged) {
         await loadHooks()
@@ -143,10 +176,12 @@ export const useRackStore = defineStore('rack', () => {
 
   async function getFreeCount(): Promise<number> {
     try {
-      const rows = await query<{ cnt: number }>(
-        `SELECT COUNT(*) as cnt FROM rack_hooks WHERE status = '${HOOK_STATUS_FREE}'`
-      )
-      return rows[0].cnt
+      const { data, error } = await supabase
+        .from('rack_hooks')
+        .select('hook_no', { count: 'exact' })
+        .eq('status', '空闲')
+      if (error) throw error
+      return data?.length ?? 0
     } catch (error) {
       console.error('Failed to get free count:', error)
       throw error

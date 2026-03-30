@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { query, execute } from '@/db'
+import { supabase } from '@/lib/supabase'
 
 // Validation constants
 const MAX_QUANTITY = 100000
@@ -21,7 +21,13 @@ export const useInventoryStore = defineStore('inventory', () => {
 
   async function loadItems() {
     try {
-      items.value = await query<InventoryItem>('SELECT * FROM inventory ORDER BY category, name')
+      const { data, error } = await supabase
+        .from('inventory')
+        .select('*')
+        .order('category')
+        .order('name')
+      if (error) throw error
+      items.value = data || []
     } catch (error) {
       console.error('Failed to load inventory items:', error)
       throw error
@@ -67,11 +73,20 @@ export const useInventoryStore = defineStore('inventory', () => {
         throw new Error(`最小库存数量不能超过 ${MAX_QUANTITY}`)
       }
 
-      await execute(
-        'INSERT INTO inventory (name, category, quantity, unit, min_quantity) VALUES (?, ?, ?, ?, ?)',
-        [item.name, item.category, item.quantity, item.unit, item.min_quantity]
-      )
+      const { data, error } = await supabase
+        .from('inventory')
+        .insert([{
+          name: item.name,
+          category: item.category,
+          quantity: item.quantity,
+          unit: item.unit,
+          min_quantity: item.min_quantity
+        }])
+        .select()
+        .single()
+      if (error) throw error
       await loadItems()
+      return data?.id
     } catch (error) {
       console.error('Failed to create inventory item:', error)
       throw error
@@ -126,22 +141,23 @@ export const useInventoryStore = defineStore('inventory', () => {
         }
       }
 
-      const fields: string[] = []
-      const values: unknown[] = []
+      const updateData: Record<string, any> = {}
       for (const [key, val] of Object.entries(item)) {
         if (!['id', 'updated_at'].includes(key)) {
-          fields.push(`${key} = ?`)
-          values.push(val)
+          updateData[key] = val
         }
       }
-      fields.push("updated_at = datetime('now', 'localtime')")
-      values.push(id)
+      updateData.updated_at = new Date().toISOString()
 
-      if (fields.length <= 1) {
+      if (Object.keys(updateData).length <= 1) {
         throw new Error('没有需要更新的字段')
       }
 
-      await execute(`UPDATE inventory SET ${fields.join(', ')} WHERE id = ?`, values)
+      const { error } = await supabase
+        .from('inventory')
+        .update(updateData)
+        .eq('id', id)
+      if (error) throw error
       await loadItems()
     } catch (error) {
       console.error('Failed to update inventory item:', error)
@@ -162,22 +178,28 @@ export const useInventoryStore = defineStore('inventory', () => {
       }
 
       // Get current item to validate adjustment doesn't go below zero
-      const currentItems = await query<InventoryItem>('SELECT quantity FROM inventory WHERE id = ?', [id])
-      if (currentItems.length === 0) {
+      const { data: currentItems, error: fetchError } = await supabase
+        .from('inventory')
+        .select('quantity')
+        .eq('id', id)
+        .single()
+      if (fetchError) throw fetchError
+      if (!currentItems) {
         throw new Error('物品不存在')
       }
-      const newQuantity = currentItems[0].quantity + delta
+      const newQuantity = currentItems.quantity + delta
       if (newQuantity < MIN_QUANTITY) {
-        throw new Error(`调整后数量不能为负数，当前数量: ${currentItems[0].quantity}，变化: ${delta}`)
+        throw new Error(`调整后数量不能为负数，当前数量: ${currentItems.quantity}，变化: ${delta}`)
       }
       if (newQuantity > MAX_QUANTITY) {
         throw new Error(`调整后数量不能超过 ${MAX_QUANTITY}`)
       }
 
-      await execute(
-        "UPDATE inventory SET quantity = quantity + ?, updated_at = datetime('now', 'localtime') WHERE id = ?",
-        [delta, id]
-      )
+      const { error } = await supabase
+        .from('inventory')
+        .update({ quantity: newQuantity, updated_at: new Date().toISOString() })
+        .eq('id', id)
+      if (error) throw error
       await loadItems()
     } catch (error) {
       console.error('Failed to adjust quantity:', error)
@@ -192,7 +214,11 @@ export const useInventoryStore = defineStore('inventory', () => {
         throw new Error('无效的物品ID')
       }
 
-      await execute('DELETE FROM inventory WHERE id = ?', [id])
+      const { error } = await supabase
+        .from('inventory')
+        .delete()
+        .eq('id', id)
+      if (error) throw error
       await loadItems()
     } catch (error) {
       console.error('Failed to delete inventory item:', error)
@@ -202,7 +228,13 @@ export const useInventoryStore = defineStore('inventory', () => {
 
   async function getLowStockItems(): Promise<InventoryItem[]> {
     try {
-      return query<InventoryItem>('SELECT * FROM inventory WHERE quantity <= min_quantity ORDER BY name')
+      const { data, error } = await supabase
+        .from('inventory')
+        .select('*')
+        .lte('quantity', 'min_quantity')
+        .order('name')
+      if (error) throw error
+      return data || []
     } catch (error) {
       console.error('Failed to get low stock items:', error)
       throw error

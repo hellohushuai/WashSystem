@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { query, execute } from '@/db'
+import { supabase } from '@/lib/supabase'
 
 export interface GarmentType {
   id: number
@@ -27,9 +27,12 @@ export const useTypesStore = defineStore('types', () => {
   // Garment Types
   async function loadGarmentTypes() {
     try {
-      garmentTypes.value = await query<GarmentType>(
-        'SELECT * FROM garment_types ORDER BY sort_order'
-      )
+      const { data, error } = await supabase
+        .from('garment_types')
+        .select('*')
+        .order('sort_order')
+      if (error) throw error
+      garmentTypes.value = data || []
     } catch (error) {
       console.error('Failed to load garment types:', error)
       throw error
@@ -38,12 +41,19 @@ export const useTypesStore = defineStore('types', () => {
 
   async function createGarmentType(type: Omit<GarmentType, 'id' | 'created_at'>) {
     try {
-      const result = await execute(
-        'INSERT INTO garment_types (name, price, sort_order, is_active) VALUES (?, ?, ?, ?)',
-        [type.name, type.price, type.sort_order, type.is_active ?? 1]
-      )
+      const { data, error } = await supabase
+        .from('garment_types')
+        .insert([{
+          name: type.name,
+          price: type.price,
+          sort_order: type.sort_order,
+          is_active: type.is_active ?? 1
+        }])
+        .select()
+        .single()
+      if (error) throw error
       await loadGarmentTypes()
-      return result.lastInsertId
+      return data?.id
     } catch (error) {
       console.error('Failed to create garment type:', error)
       throw error
@@ -53,17 +63,18 @@ export const useTypesStore = defineStore('types', () => {
   async function updateGarmentType(id: number, type: Partial<GarmentType>) {
     try {
       const allowedFields = ['name', 'price', 'sort_order', 'is_active']
-      const fields: string[] = []
-      const values: unknown[] = []
+      const updateData: Record<string, any> = {}
       for (const [key, val] of Object.entries(type)) {
         if (key !== 'id' && key !== 'created_at' && allowedFields.includes(key)) {
-          fields.push(`${key} = ?`)
-          values.push(val)
+          updateData[key] = val
         }
       }
-      if (fields.length === 0) return
-      values.push(id)
-      await execute(`UPDATE garment_types SET ${fields.join(', ')} WHERE id = ?`, values)
+      if (Object.keys(updateData).length === 0) return
+      const { error } = await supabase
+        .from('garment_types')
+        .update(updateData)
+        .eq('id', id)
+      if (error) throw error
       await loadGarmentTypes()
     } catch (error) {
       console.error('Failed to update garment type:', error)
@@ -73,7 +84,11 @@ export const useTypesStore = defineStore('types', () => {
 
   async function deleteGarmentType(id: number) {
     try {
-      await execute('DELETE FROM garment_types WHERE id = ?', [id])
+      const { error } = await supabase
+        .from('garment_types')
+        .delete()
+        .eq('id', id)
+      if (error) throw error
       await loadGarmentTypes()
     } catch (error) {
       console.error('Failed to delete garment type:', error)
@@ -84,9 +99,12 @@ export const useTypesStore = defineStore('types', () => {
   // Service Types
   async function loadServiceTypes() {
     try {
-      serviceTypes.value = await query<ServiceType>(
-        'SELECT * FROM service_types ORDER BY sort_order'
-      )
+      const { data, error } = await supabase
+        .from('service_types')
+        .select('*')
+        .order('sort_order')
+      if (error) throw error
+      serviceTypes.value = data || []
     } catch (error) {
       console.error('Failed to load service types:', error)
       throw error
@@ -95,12 +113,19 @@ export const useTypesStore = defineStore('types', () => {
 
   async function createServiceType(type: Omit<ServiceType, 'id' | 'created_at'>) {
     try {
-      const result = await execute(
-        'INSERT INTO service_types (name, price, sort_order, is_active) VALUES (?, ?, ?, ?)',
-        [type.name, type.price, type.sort_order, type.is_active ?? 1]
-      )
+      const { data, error } = await supabase
+        .from('service_types')
+        .insert([{
+          name: type.name,
+          price: type.price,
+          sort_order: type.sort_order,
+          is_active: type.is_active ?? 1
+        }])
+        .select()
+        .single()
+      if (error) throw error
       await loadServiceTypes()
-      return result.lastInsertId
+      return data?.id
     } catch (error) {
       console.error('Failed to create service type:', error)
       throw error
@@ -110,17 +135,18 @@ export const useTypesStore = defineStore('types', () => {
   async function updateServiceType(id: number, type: Partial<ServiceType>) {
     try {
       const allowedFields = ['name', 'price', 'sort_order', 'is_active']
-      const fields: string[] = []
-      const values: unknown[] = []
+      const updateData: Record<string, any> = {}
       for (const [key, val] of Object.entries(type)) {
         if (key !== 'id' && key !== 'created_at' && allowedFields.includes(key)) {
-          fields.push(`${key} = ?`)
-          values.push(val)
+          updateData[key] = val
         }
       }
-      if (fields.length === 0) return
-      values.push(id)
-      await execute(`UPDATE service_types SET ${fields.join(', ')} WHERE id = ?`, values)
+      if (Object.keys(updateData).length === 0) return
+      const { error } = await supabase
+        .from('service_types')
+        .update(updateData)
+        .eq('id', id)
+      if (error) throw error
       await loadServiceTypes()
     } catch (error) {
       console.error('Failed to update service type:', error)
@@ -130,7 +156,11 @@ export const useTypesStore = defineStore('types', () => {
 
   async function deleteServiceType(id: number) {
     try {
-      await execute('DELETE FROM service_types WHERE id = ?', [id])
+      const { error } = await supabase
+        .from('service_types')
+        .delete()
+        .eq('id', id)
+      if (error) throw error
       await loadServiceTypes()
     } catch (error) {
       console.error('Failed to delete service type:', error)
