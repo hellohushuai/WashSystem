@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { query, execute } from '@/db'
+import { supabase } from '@/lib/supabase'
 import { useRackStore } from './rack'
 import { useCustomerStore } from './customers'
 
@@ -12,14 +12,6 @@ export const ORDER_STATUS_COMPLETED = '已结束'
 // Validation constants
 const MIN_ITEMS = 1
 const MAX_ITEMS = 100
-
-// Helper to safely convert lastInsertId to number
-function toNumber(value: number | bigint | undefined): number {
-  if (value === undefined) {
-    throw new Error('插入操作未返回有效的ID')
-  }
-  return typeof value === 'bigint' ? Number(value) : value
-}
 
 export interface Order {
   id: number
@@ -60,11 +52,17 @@ export const useOrderStore = defineStore('orders', () => {
         + String(today.getMonth() + 1).padStart(2, '0')
         + String(today.getDate()).padStart(2, '0')
       const prefix = `DC${dateStr}`
-      const rows = await query<{ cnt: number }>(
-        "SELECT COUNT(*) as cnt FROM orders WHERE order_no LIKE ?",
-        [`${prefix}%`]
-      )
-      const seq = String(rows[0].cnt + 1).padStart(3, '0')
+
+      const { data, error } = await supabase
+        .from('orders')
+        .select('order_no')
+        .like('order_no', `${prefix}%`)
+        .order('order_no', { ascending: false })
+        .limit(1)
+
+      if (error) throw error
+
+      const seq = String((data?.length ?? 0) + 1).padStart(3, '0')
       return `${prefix}${seq}`
     } catch (error) {
       console.error('Failed to generate order number:', error)
@@ -74,33 +72,36 @@ export const useOrderStore = defineStore('orders', () => {
 
   async function loadOrders(filters?: { status?: string; search?: string; dateFrom?: string; dateTo?: string }) {
     try {
-      let sql = `
-        SELECT o.*, c.name as customer_name, c.phone as customer_phone,
-               (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as item_count
-        FROM orders o
-        LEFT JOIN customers c ON o.customer_id = c.id
-        WHERE 1=1
-      `
-      const params: unknown[] = []
+      let query = supabase
+        .from('orders')
+        .select(`
+          *,
+          customers (name, phone)
+        `)
+        .order('created_at', { ascending: false })
 
       if (filters?.status) {
-        sql += ' AND o.status = ?'
-        params.push(filters.status)
+        query = query.eq('status', filters.status)
       }
       if (filters?.search) {
-        sql += ' AND (c.name LIKE ? OR c.phone LIKE ? OR o.order_no LIKE ?)'
-        params.push(`%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`)
+        query = query.or(`order_no.ilike.%${filters.search}%,customers.name.ilike.%${filters.search}%,customers.phone.ilike.%${filters.search}%`)
       }
       if (filters?.dateFrom) {
-        sql += ' AND o.created_at >= ?'
-        params.push(filters.dateFrom)
+        query = query.gte('created_at', filters.dateFrom)
       }
       if (filters?.dateTo) {
-        sql += ' AND o.created_at <= ?'
-        params.push(filters.dateTo + ' 23:59:59')
+        query = query.lte('created_at', filters.dateTo + ' 23:59:59')
       }
-      sql += ' ORDER BY o.created_at DESC'
-      orders.value = await query<Order>(sql, params)
+
+      const { data, error } = await query
+      if (error) throw error
+
+      // Transform data to include customer_name and customer_phone
+      orders.value = (data || []).map((order: any) => ({
+        ...order,
+        customer_name: order.customers?.name,
+        customer_phone: order.customers?.phone,
+      }))
     } catch (error) {
       console.error('Failed to load orders:', error)
       throw error
@@ -113,14 +114,24 @@ export const useOrderStore = defineStore('orders', () => {
       if (!Number.isInteger(id) || id <= 0) {
         throw new Error('无效的订单ID')
       }
-      const rows = await query<Order>(
-        `SELECT o.*, c.name as customer_name, c.phone as customer_phone
-         FROM orders o
-         LEFT JOIN customers c ON o.customer_id = c.id
-         WHERE o.id = ?`,
-        [id]
-      )
-      return rows[0]
+
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          customers (name, phone)
+        `)
+        .eq('id', id)
+        .single()
+
+      if (error) throw error
+      if (!data) return undefined
+
+      return {
+        ...data,
+        customer_name: (data as any).customers?.name,
+        customer_phone: (data as any).customers?.phone,
+      }
     } catch (error) {
       console.error('Failed to get order:', error)
       throw error
@@ -133,7 +144,15 @@ export const useOrderStore = defineStore('orders', () => {
       if (!Number.isInteger(orderId) || orderId <= 0) {
         throw new Error('无效的订单ID')
       }
-      return query<OrderItem>('SELECT * FROM order_items WHERE order_id = ? ORDER BY id', [orderId])
+
+      const { data, error } = await supabase
+        .from('order_items')
+        .select('*')
+        .eq('order_id', orderId)
+        .order('id')
+
+      if (error) throw error
+      return data || []
     } catch (error) {
       console.error('Failed to get order items:', error)
       throw error
@@ -193,34 +212,56 @@ export const useOrderStore = defineStore('orders', () => {
 
       const totalAmount = items.reduce((sum, item) => sum + item.price, 0) * discount
 
-      const result = await execute(
-        `INSERT INTO orders (order_no, customer_id, status, total_amount, notes)
-         VALUES (?, ?, ?, ?, ?)`,
-        [orderNo, customerId, ORDER_STATUS_PENDING, totalAmount, notes ?? '']
-      )
-      const orderId = toNumber(result.lastInsertId)
+      // Insert order
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          order_no: orderNo,
+          customer_id: customerId,
+          status: ORDER_STATUS_PENDING,
+          total_amount: totalAmount,
+          notes: notes ?? '',
+        })
+        .select()
+        .single()
+
+      if (orderError) throw orderError
+      const orderId = orderData.id
 
       // Create items and allocate hooks
       for (const item of items) {
-        const itemResult = await execute(
-          'INSERT INTO order_items (order_id, garment_type, service_type, price, notes) VALUES (?, ?, ?, ?, ?)',
-          [orderId, item.garment_type, item.service_type, item.price * discount, item.notes ?? '']
-        )
-        const itemId = toNumber(itemResult.lastInsertId)
+        const { data: itemData, error: itemError } = await supabase
+          .from('order_items')
+          .insert({
+            order_id: orderId,
+            garment_type: item.garment_type,
+            service_type: item.service_type,
+            price: item.price * discount,
+            notes: item.notes ?? '',
+          })
+          .select()
+          .single()
+
+        if (itemError) throw itemError
+        const itemId = itemData.id
+
         const hookNo = await rackStore.allocateHook(itemId)
         if (hookNo !== null) {
-          await execute('UPDATE order_items SET hook_no = ? WHERE id = ?', [hookNo, itemId])
+          await supabase
+            .from('order_items')
+            .update({ hook_no: hookNo })
+            .eq('id', itemId)
         }
       }
 
       // Add points to customer
       if (customer) {
-        const pointsRate = customer.discount !== undefined
-          ? (await query<{ points_rate: number }>(
-              'SELECT points_rate FROM membership_levels WHERE id = ?',
-              [customer.membership_level_id]
-            ))[0]?.points_rate ?? 1.0
-          : 1.0
+        const { data: levelData } = await supabase
+          .from('membership_levels')
+          .select('points_rate')
+          .eq('id', customer.membership_level_id)
+          .single()
+        const pointsRate = levelData?.points_rate ?? 1.0
         const points = Math.floor(totalAmount * pointsRate)
         await customerStore.addPoints(customerId, points)
       }
@@ -283,18 +324,28 @@ export const useOrderStore = defineStore('orders', () => {
             await rackStore.releaseHook(item.hook_no)
           }
         }
-        await execute(
-          `UPDATE orders SET status = ?, picked_up_at = datetime('now', 'localtime') WHERE id = ?`,
-          [newStatus, orderId]
-        )
+        const { error } = await supabase
+          .from('orders')
+          .update({ status: newStatus, picked_up_at: new Date().toISOString() })
+          .eq('id', orderId)
+        if (error) throw error
       } else if (newStatus === ORDER_STATUS_PAID) {
         // Auto-pay full amount when status changes to PAID
-        await execute(
-          `UPDATE orders SET status = ?, paid_amount = ?, completed_at = datetime('now', 'localtime') WHERE id = ?`,
-          [newStatus, order.total_amount, orderId]
-        )
+        const { error } = await supabase
+          .from('orders')
+          .update({
+            status: newStatus,
+            paid_amount: order.total_amount,
+            completed_at: new Date().toISOString(),
+          })
+          .eq('id', orderId)
+        if (error) throw error
       } else {
-        await execute('UPDATE orders SET status = ? WHERE id = ?', [newStatus, orderId])
+        const { error } = await supabase
+          .from('orders')
+          .update({ status: newStatus })
+          .eq('id', orderId)
+        if (error) throw error
       }
     } catch (error) {
       console.error('Failed to update status:', error)
@@ -325,15 +376,25 @@ export const useOrderStore = defineStore('orders', () => {
         throw new Error(`付款金额超过待付金额: 还需 ${remainingBalance} 元`)
       }
 
-      await execute(
-        'UPDATE orders SET paid_amount = paid_amount + ?, payment_method = ? WHERE id = ?',
-        [amount, method, orderId]
-      )
+      // Update order paid_amount
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ paid_amount: order.paid_amount + amount, payment_method: method })
+        .eq('id', orderId)
+      if (updateError) throw updateError
+
       // Auto-create financial record
-      await execute(
-        "INSERT INTO financial_records (type, amount, category, source, related_order_id, description) VALUES ('收入', ?, '订单收入', 'order', ?, ?)",
-        [amount, orderId, `订单收款`]
-      )
+      const { error: insertError } = await supabase
+        .from('financial_records')
+        .insert({
+          type: '收入',
+          amount,
+          category: '订单收入',
+          source: 'order',
+          related_order_id: orderId,
+          description: '订单收款',
+        })
+      if (insertError) throw insertError
     } catch (error) {
       console.error('Failed to record payment:', error)
       throw error
@@ -348,15 +409,23 @@ export const useOrderStore = defineStore('orders', () => {
       }
 
       const rackStore = useRackStore()
-      const items = await query<OrderItem>('SELECT * FROM order_items WHERE id = ?', [itemId])
-      if (items.length === 0) return
+      const { data: items } = await supabase
+        .from('order_items')
+        .select('*')
+        .eq('id', itemId)
+        .single()
 
-      const item = items[0]
-      await execute('UPDATE order_items SET is_picked_up = 1 WHERE id = ?', [itemId])
+      if (!items) return
+
+      const { error } = await supabase
+        .from('order_items')
+        .update({ is_picked_up: 1 })
+        .eq('id', itemId)
+      if (error) throw error
 
       // Release hook
-      if (item.hook_no !== null) {
-        await rackStore.releaseHook(item.hook_no)
+      if (items.hook_no !== null) {
+        await rackStore.releaseHook(items.hook_no)
       }
     } catch (error) {
       console.error('Failed to pick up item:', error)
@@ -367,17 +436,30 @@ export const useOrderStore = defineStore('orders', () => {
   async function getTodayStats(): Promise<{ orderCount: number; income: number }> {
     try {
       const today = new Date().toISOString().split('T')[0]
-      const orderRows = await query<{ cnt: number }>(
-        "SELECT COUNT(*) as cnt FROM orders WHERE date(created_at) = ?",
-        [today]
-      )
-      const incomeRows = await query<{ total: number }>(
-        "SELECT COALESCE(SUM(amount), 0) as total FROM financial_records WHERE type = '收入' AND date(created_at) = ?",
-        [today]
-      )
+      const startOfDay = `${today}T00:00:00`
+      const endOfDay = `${today}T23:59:59`
+
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .select('id', { count: 'exact' })
+        .gte('created_at', startOfDay)
+        .lte('created_at', endOfDay)
+
+      if (orderError) throw orderError
+
+      const { data: incomeData, error: incomeError } = await supabase
+        .from('financial_records')
+        .select('amount')
+        .eq('type', '收入')
+        .gte('created_at', startOfDay)
+        .lte('created_at', endOfDay)
+
+      if (incomeError) throw incomeError
+
+      const income = (incomeData || []).reduce((sum, record) => sum + (record.amount || 0), 0)
       return {
-        orderCount: orderRows[0].cnt,
-        income: incomeRows[0].total,
+        orderCount: orderData?.length ?? 0,
+        income,
       }
     } catch (error) {
       console.error('Failed to get today stats:', error)
@@ -388,12 +470,33 @@ export const useOrderStore = defineStore('orders', () => {
   // Record balance payment (without updating payment_method since it's internal)
   async function recordBalancePayment(orderId: number, amount: number) {
     try {
-      await execute('UPDATE orders SET paid_amount = paid_amount + ? WHERE id = ?', [amount, orderId])
+      // Get current paid_amount
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .select('paid_amount')
+        .eq('id', orderId)
+        .single()
+
+      if (orderError) throw orderError
+
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ paid_amount: (order?.paid_amount ?? 0) + amount })
+        .eq('id', orderId)
+      if (updateError) throw updateError
+
       // Record as financial income - source is 'order' but payment method is '余额'
-      await execute(
-        "INSERT INTO financial_records (type, amount, category, source, related_order_id, description) VALUES ('收入', ?, '订单收入', 'order', ?, ?)",
-        [amount, orderId, '余额支付']
-      )
+      const { error: insertError } = await supabase
+        .from('financial_records')
+        .insert({
+          type: '收入',
+          amount,
+          category: '订单收入',
+          source: 'order',
+          related_order_id: orderId,
+          description: '余额支付',
+        })
+      if (insertError) throw insertError
     } catch (error) {
       console.error('Failed to record balance payment:', error)
       throw error
