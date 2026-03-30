@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { query, execute } from '@/db'
+import { supabase } from '@/lib/supabase'
 
 export interface MembershipLevel {
   id: number
@@ -31,9 +31,12 @@ export const useCustomerStore = defineStore('customers', () => {
 
   async function loadLevels() {
     try {
-      levels.value = await query<MembershipLevel>(
-        'SELECT * FROM membership_levels ORDER BY sort_order'
-      )
+      const { data, error } = await supabase
+        .from('membership_levels')
+        .select('*')
+        .order('sort_order')
+      if (error) throw error
+      levels.value = data || []
     } catch (error) {
       console.error('Failed to load levels:', error)
       throw error
@@ -43,13 +46,14 @@ export const useCustomerStore = defineStore('customers', () => {
   async function createLevel(level: Omit<MembershipLevel, 'id'>) {
     console.log('Creating level with data:', JSON.stringify(level))
     try {
-      const result = await execute(
-        'INSERT INTO membership_levels (name, discount, points_threshold, points_rate, sort_order) VALUES (?, ?, ?, ?, ?)',
-        [level.name, level.discount, level.points_threshold, level.points_rate, level.sort_order]
-      )
-      console.log('Insert result:', result)
+      const { data, error } = await supabase
+        .from('membership_levels')
+        .insert([level])
+        .select()
+        .single()
+      if (error) throw error
       await loadLevels()
-      return result.lastInsertId
+      return data?.id
     } catch (error) {
       console.error('Failed to create level:', error)
       throw error
@@ -58,18 +62,11 @@ export const useCustomerStore = defineStore('customers', () => {
 
   async function updateLevel(id: number, level: Partial<MembershipLevel>) {
     try {
-      const allowedFields = ['name', 'discount', 'points_threshold', 'points_rate', 'sort_order']
-      const fields: string[] = []
-      const values: unknown[] = []
-      for (const [key, val] of Object.entries(level)) {
-        if (key !== 'id' && allowedFields.includes(key)) {
-          fields.push(`${key} = ?`)
-          values.push(val)
-        }
-      }
-      if (fields.length === 0) return
-      values.push(id)
-      await execute(`UPDATE membership_levels SET ${fields.join(', ')} WHERE id = ?`, values)
+      const { error } = await supabase
+        .from('membership_levels')
+        .update(level)
+        .eq('id', id)
+      if (error) throw error
       await loadLevels()
     } catch (error) {
       console.error('Failed to update level:', error)
@@ -79,8 +76,17 @@ export const useCustomerStore = defineStore('customers', () => {
 
   async function deleteLevel(id: number) {
     try {
-      await execute('UPDATE customers SET membership_level_id = NULL WHERE membership_level_id = ?', [id])
-      await execute('DELETE FROM membership_levels WHERE id = ?', [id])
+      // First set customers with this level to null
+      await supabase
+        .from('customers')
+        .update({ membership_level_id: null })
+        .eq('membership_level_id', id)
+      // Then delete the level
+      const { error } = await supabase
+        .from('membership_levels')
+        .delete()
+        .eq('id', id)
+      if (error) throw error
       await loadLevels()
     } catch (error) {
       console.error('Failed to delete level:', error)
@@ -90,18 +96,27 @@ export const useCustomerStore = defineStore('customers', () => {
 
   async function loadCustomers(search?: string) {
     try {
-      let sql = `
-        SELECT c.*, m.name as level_name, m.discount
-        FROM customers c
-        LEFT JOIN membership_levels m ON c.membership_level_id = m.id
-      `
-      const params: unknown[] = []
+      let query = supabase
+        .from('customers')
+        .select(`
+          *,
+          membership_levels (name, discount)
+        `)
+        .order('created_at', { ascending: false })
+
       if (search) {
-        sql += ' WHERE c.name LIKE ? OR c.phone LIKE ?'
-        params.push(`%${search}%`, `%${search}%`)
+        query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%`)
       }
-      sql += ' ORDER BY c.created_at DESC'
-      customers.value = await query<Customer>(sql, params)
+
+      const { data, error } = await query
+      if (error) throw error
+
+      // Transform the data to flatten membership level info
+      customers.value = (data || []).map((customer: any) => ({
+        ...customer,
+        level_name: customer.membership_levels?.name,
+        discount: customer.membership_levels?.discount
+      }))
     } catch (error) {
       console.error('Failed to load customers:', error)
       throw error
@@ -110,14 +125,25 @@ export const useCustomerStore = defineStore('customers', () => {
 
   async function getCustomer(id: number): Promise<Customer | undefined> {
     try {
-      const rows = await query<Customer>(
-        `SELECT c.*, m.name as level_name, m.discount
-         FROM customers c
-         LEFT JOIN membership_levels m ON c.membership_level_id = m.id
-         WHERE c.id = ?`,
-        [id]
-      )
-      return rows[0]
+      const { data, error } = await supabase
+        .from('customers')
+        .select(`
+          *,
+          membership_levels (name, discount)
+        `)
+        .eq('id', id)
+        .single()
+
+      if (error) throw error
+
+      if (data) {
+        return {
+          ...data,
+          level_name: (data as any).membership_levels?.name,
+          discount: (data as any).membership_levels?.discount
+        }
+      }
+      return undefined
     } catch (error) {
       console.error('Failed to get customer:', error)
       throw error
@@ -126,11 +152,21 @@ export const useCustomerStore = defineStore('customers', () => {
 
   async function createCustomer(c: { name: string; phone: string; membership_level_id?: number; notes?: string }) {
     try {
-      const result = await execute(
-        'INSERT INTO customers (name, phone, membership_level_id, notes) VALUES (?, ?, ?, ?)',
-        [c.name, c.phone, c.membership_level_id ?? null, c.notes ?? '']
-      )
-      return result.lastInsertId
+      const { data, error } = await supabase
+        .from('customers')
+        .insert([{
+          name: c.name,
+          phone: c.phone,
+          membership_level_id: c.membership_level_id ?? null,
+          notes: c.notes ?? '',
+          points: 0,
+          balance: 0
+        }])
+        .select()
+        .single()
+
+      if (error) throw error
+      return data?.id
     } catch (error) {
       console.error('Failed to create customer:', error)
       throw error
@@ -140,17 +176,20 @@ export const useCustomerStore = defineStore('customers', () => {
   async function updateCustomer(id: number, c: Partial<Customer>) {
     try {
       const allowedFields = ['name', 'phone', 'membership_level_id', 'points', 'balance', 'notes']
-      const fields: string[] = []
-      const values: unknown[] = []
+      const updateData: Record<string, any> = {}
       for (const [key, val] of Object.entries(c)) {
         if (key !== 'id' && key !== 'created_at' && key !== 'level_name' && key !== 'discount' && allowedFields.includes(key)) {
-          fields.push(`${key} = ?`)
-          values.push(val)
+          updateData[key] = val
         }
       }
-      if (fields.length === 0) return
-      values.push(id)
-      await execute(`UPDATE customers SET ${fields.join(', ')} WHERE id = ?`, values)
+      if (Object.keys(updateData).length === 0) return
+
+      const { error } = await supabase
+        .from('customers')
+        .update(updateData)
+        .eq('id', id)
+
+      if (error) throw error
     } catch (error) {
       console.error('Failed to update customer:', error)
       throw error
@@ -159,9 +198,24 @@ export const useCustomerStore = defineStore('customers', () => {
 
   async function addPoints(customerId: number, points: number): Promise<number> {
     try {
-      await execute('UPDATE customers SET points = points + ? WHERE id = ?', [points, customerId])
-      const customers = await query<{ points: number }>('SELECT points FROM customers WHERE id = ?', [customerId])
-      return customers[0]?.points ?? 0
+      // Get current points
+      const { data: customer, error: fetchError } = await supabase
+        .from('customers')
+        .select('points')
+        .eq('id', customerId)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      const newPoints = (customer?.points || 0) + points
+
+      const { error } = await supabase
+        .from('customers')
+        .update({ points: newPoints })
+        .eq('id', customerId)
+
+      if (error) throw error
+      return newPoints
     } catch (error) {
       console.error('Failed to add points:', error)
       throw error
@@ -170,19 +224,47 @@ export const useCustomerStore = defineStore('customers', () => {
 
   async function recharge(customerId: number, amount: number, paymentMethod: string = '现金'): Promise<number> {
     try {
-      await execute('UPDATE customers SET balance = balance + ? WHERE id = ?', [amount, customerId])
+      // Get current balance
+      const { data: customer, error: fetchError } = await supabase
+        .from('customers')
+        .select('balance')
+        .eq('id', customerId)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      const newBalance = (customer?.balance || 0) + amount
+
+      // Update customer balance
+      const { error } = await supabase
+        .from('customers')
+        .update({ balance: newBalance })
+        .eq('id', customerId)
+
+      if (error) throw error
+
       // Record recharge
-      await execute(
-        'INSERT INTO recharge_records (customer_id, amount, payment_method) VALUES (?, ?, ?)',
-        [customerId, amount, paymentMethod]
-      )
+      await supabase
+        .from('recharge_records')
+        .insert([{
+          customer_id: customerId,
+          amount: amount,
+          payment_method: paymentMethod
+        }])
+
       // Create financial record
-      await execute(
-        'INSERT INTO financial_records (type, amount, category, source, related_customer_id, description) VALUES (?, ?, ?, ?, ?, ?)',
-        ['收入', amount, '会员充值', 'recharge', customerId, '会员充值']
-      )
-      const customers = await query<{ balance: number }>('SELECT balance FROM customers WHERE id = ?', [customerId])
-      return customers[0]?.balance ?? 0
+      await supabase
+        .from('financial_records')
+        .insert([{
+          type: '收入',
+          amount: amount,
+          category: '会员充值',
+          source: 'recharge',
+          related_customer_id: customerId,
+          description: '会员充值'
+        }])
+
+      return newBalance
     } catch (error) {
       console.error('Failed to recharge:', error)
       throw error
@@ -191,8 +273,27 @@ export const useCustomerStore = defineStore('customers', () => {
 
   async function useBalance(customerId: number, amount: number): Promise<boolean> {
     try {
-      const result = await execute('UPDATE customers SET balance = balance - ? WHERE id = ? AND balance >= ?', [amount, customerId, amount])
-      return result.rowsAffected > 0
+      // Get current balance
+      const { data: customer, error: fetchError } = await supabase
+        .from('customers')
+        .select('balance')
+        .eq('id', customerId)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      const currentBalance = customer?.balance || 0
+      if (currentBalance < amount) {
+        return false
+      }
+
+      const { error } = await supabase
+        .from('customers')
+        .update({ balance: currentBalance - amount })
+        .eq('id', customerId)
+
+      if (error) throw error
+      return true
     } catch (error) {
       console.error('Failed to use balance:', error)
       throw error
