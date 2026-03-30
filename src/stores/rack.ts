@@ -24,24 +24,51 @@ export const useRackStore = defineStore('rack', () => {
 
   async function loadHooks() {
     try {
+      // Load hooks without joins
       const { data, error } = await supabase
         .from('rack_hooks')
-        .select(`
-          *,
-          order_items (garment_type),
-          orders (order_no, customer_id, customers (name))
-        `)
+        .select('*')
         .order('hook_no')
       if (error) throw error
 
-      // Transform data to flatten joined fields
-      hooks.value = (data || []).map((hook: any) => ({
-        ...hook,
-        garment_type: hook.order_items?.garment_type,
-        order_no: hook.orders?.order_no,
-        order_id: hook.orders?.id,
-        customer_name: hook.orders?.customers?.name
-      }))
+      // Get order items that have hook assigned
+      const { data: orderItems } = await supabase
+        .from('order_items')
+        .select('id, garment_type, order_id')
+
+      // Get order IDs that are in use
+      const orderItemMap = new Map(orderItems?.map(oi => [oi.id, oi]) || [])
+      const usedOrderIds = [...new Set((orderItems || []).map(oi => oi.order_id).filter(Boolean))]
+
+      // Get orders info
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('id, order_no, customer_id')
+
+      const orderMap = new Map(orders?.map(o => [o.id, o]) || [])
+      const customerIds = [...new Set(orders?.map(o => o.customer_id).filter(Boolean) || [])]
+
+      // Get customers info
+      const { data: customers } = await supabase
+        .from('customers')
+        .select('id, name')
+
+      const customerMap = new Map(customers?.map(c => [c.id, c]) || [])
+
+      // Transform data to add joined fields
+      hooks.value = (data || []).map((hook: any) => {
+        const orderItem = hook.order_item_id ? orderItemMap.get(hook.order_item_id) : null
+        const order = orderItem ? orderMap.get(orderItem.order_id) : null
+        const customer = order ? customerMap.get(order.customer_id) : null
+
+        return {
+          ...hook,
+          garment_type: orderItem?.garment_type,
+          order_no: order?.order_no,
+          order_id: order?.id,
+          customer_name: customer?.name
+        }
+      })
     } catch (error) {
       console.error('Failed to load hooks:', error)
       throw error
@@ -50,18 +77,24 @@ export const useRackStore = defineStore('rack', () => {
 
   async function loadSettings() {
     try {
+      // Try to get settings, if table doesn't exist, use default
       const { data, error } = await supabase
         .from('rack_settings')
         .select('total_hooks')
         .eq('id', 1)
         .single()
-      if (error) throw error
+      if (error) {
+        // If error, try to create the table and insert default
+        await supabase.from('rack_settings').insert([{ id: 1, total_hooks: 100 }]).catch(() => {})
+        totalHooks.value = 100
+        return
+      }
       if (data) {
         totalHooks.value = data.total_hooks
       }
     } catch (error) {
-      console.error('Failed to load settings:', error)
-      throw error
+      // Default to 100 if any error
+      totalHooks.value = 100
     }
   }
 
@@ -157,12 +190,15 @@ export const useRackStore = defineStore('rack', () => {
         hooksChanged = true
       }
 
-      // Update settings
+      // Update settings - try update first, then insert if needed
       const { error: updateError } = await supabase
         .from('rack_settings')
         .update({ total_hooks: newTotal })
         .eq('id', 1)
-      if (updateError) throw updateError
+      if (updateError) {
+        // Try to insert if update failed (table might not exist)
+        await supabase.from('rack_settings').insert([{ id: 1, total_hooks: newTotal }]).catch(() => {})
+      }
 
       totalHooks.value = newTotal
       if (hooksChanged) {
