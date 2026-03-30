@@ -77,3 +77,70 @@ jobs:
             src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app
             src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
           if-no-files-found: ignore
+
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build Tauri for iOS
+        run: npm run tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ""
+
+      - name: Upload iOS app
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-bundle
+          path: |
+            src-tauri/target/aarch64-apple-darwin/release/bundle/ios/*.ipa
+          if-no-files-found: ignore
+
+  build-android:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build Tauri for Android
+        run: npm run tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ""
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-bundle
+          path: |
+            src-tauri/target/aarch64-linux-android/release/bundle/android/*.apk
+          if-no-files-found: ignore
