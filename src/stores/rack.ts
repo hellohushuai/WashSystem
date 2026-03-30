@@ -29,7 +29,16 @@ export const useRackStore = defineStore('rack', () => {
         .from('rack_hooks')
         .select('*')
         .order('hook_no')
-      if (error) throw error
+      if (error) {
+        console.warn('rack_hooks table not found, using empty hooks')
+        hooks.value = []
+        return
+      }
+
+      if (!data || data.length === 0) {
+        hooks.value = []
+        return
+      }
 
       // Get order items that have hook assigned
       const { data: orderItems } = await supabase
@@ -38,7 +47,6 @@ export const useRackStore = defineStore('rack', () => {
 
       // Get order IDs that are in use
       const orderItemMap = new Map(orderItems?.map(oi => [oi.id, oi]) || [])
-      const usedOrderIds = [...new Set((orderItems || []).map(oi => oi.order_id).filter(Boolean))]
 
       // Get orders info
       const { data: orders } = await supabase
@@ -46,7 +54,6 @@ export const useRackStore = defineStore('rack', () => {
         .select('id, order_no, customer_id')
 
       const orderMap = new Map(orders?.map(o => [o.id, o]) || [])
-      const customerIds = [...new Set(orders?.map(o => o.customer_id).filter(Boolean) || [])]
 
       // Get customers info
       const { data: customers } = await supabase
@@ -85,12 +92,17 @@ export const useRackStore = defineStore('rack', () => {
         .single()
       if (error) {
         // If error, try to create the table and insert default
-        await supabase.from('rack_settings').insert([{ id: 1, total_hooks: 100 }]).catch(() => {})
-        totalHooks.value = 100
-        return
+        const { error: insertError } = await supabase.from('rack_settings').insert([{ id: 1, total_hooks: 100 }])
+        if (insertError) {
+          // Table might not exist, use default
+          totalHooks.value = 100
+          return
+        }
       }
       if (data) {
         totalHooks.value = data.total_hooks
+      } else {
+        totalHooks.value = 100
       }
     } catch (error) {
       // Default to 100 if any error
@@ -106,19 +118,21 @@ export const useRackStore = defineStore('rack', () => {
         .eq('status', '空闲')
         .order('hook_no')
         .limit(1)
-      if (fetchError) throw fetchError
-      if (!free || free.length === 0) return null
+      if (fetchError || !free || free.length === 0) return null
       const hookNo = free[0].hook_no
 
       const { error } = await supabase
         .from('rack_hooks')
         .update({ status: '占用', order_item_id: orderItemId })
         .eq('hook_no', hookNo)
-      if (error) throw error
+      if (error) {
+        console.warn('Failed to allocate hook:', error)
+        return null
+      }
       return hookNo
     } catch (error) {
       console.error('Failed to allocate hook:', error)
-      throw error
+      return null
     }
   }
 
@@ -127,18 +141,16 @@ export const useRackStore = defineStore('rack', () => {
       // Check if hook exists
       const { data: existing, error: fetchError } = await supabase
         .from('rack_hooks')
-        .select('id')
+        .select('hook_no')
         .eq('hook_no', hookNo)
         .single()
-      if (fetchError) throw fetchError
-      if (!existing) {
-        throw new Error(`挂钩 ${hookNo} 不存在`)
-      }
+      if (fetchError) return // Silently return if hook doesn't exist
+      if (!existing) return
       const { error } = await supabase
         .from('rack_hooks')
         .update({ status: '空闲', order_item_id: null })
         .eq('hook_no', hookNo)
-      if (error) throw error
+      if (error) console.warn('Failed to release hook:', error)
     } catch (error) {
       console.error('Failed to release hook:', error)
       throw error
@@ -195,9 +207,13 @@ export const useRackStore = defineStore('rack', () => {
         .from('rack_settings')
         .update({ total_hooks: newTotal })
         .eq('id', 1)
+
       if (updateError) {
         // Try to insert if update failed (table might not exist)
-        await supabase.from('rack_settings').insert([{ id: 1, total_hooks: newTotal }]).catch(() => {})
+        const { error: insertError } = await supabase.from('rack_settings').insert([{ id: 1, total_hooks: newTotal }])
+        if (insertError) {
+          // Ignore if both fail - settings might not be critical
+        }
       }
 
       totalHooks.value = newTotal
@@ -216,11 +232,10 @@ export const useRackStore = defineStore('rack', () => {
         .from('rack_hooks')
         .select('hook_no', { count: 'exact' })
         .eq('status', '空闲')
-      if (error) throw error
+      if (error) return 0
       return data?.length ?? 0
     } catch (error) {
-      console.error('Failed to get free count:', error)
-      throw error
+      return 0
     }
   }
 
