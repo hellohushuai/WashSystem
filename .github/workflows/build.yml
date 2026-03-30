@@ -6,110 +6,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-windows:
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Add mingw for Windows builds
-        run: rustup target add x86_64-pc-windows-gnu
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf mingw-w64 nsis
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Build Tauri for Windows
-        run: npm run tauri build -- --target x86_64-pc-windows-gnu
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ""
-
-      - name: Upload Windows installers
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-bundle
-          path: |
-            src-tauri/target/x86_64-pc-windows-gnu/release/bundle/nsis/*.exe
-            src-tauri/target/x86_64-pc-windows-gnu/release/bundle/msi/*.msi
-          if-no-files-found: ignore
-
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Build Tauri for macOS
-        run: npm run tauri build -- --target aarch64-apple-darwin
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ""
-
-      - name: Upload macOS app
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-bundle
-          path: |
-            src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app
-            src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
-          if-no-files-found: ignore
-
-  build-ios:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin, x86_64-apple-darwin
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Build Tauri for iOS
-        run: npm run tauri build
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ""
-
-      - name: Upload iOS app
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-bundle
-          path: |
-            src-tauri/target/aarch64-apple-darwin/release/bundle/ios/*.ipa
-          if-no-files-found: ignore
-
   build-android:
     runs-on: ubuntu-22.04
     steps:
@@ -133,7 +29,7 @@ jobs:
         run: npm ci
 
       - name: Build Tauri for Android
-        run: npm run tauri build
+        run: npm run tauri build -- --target aarch64-linux-android
         env:
           TAURI_SIGNING_PRIVATE_KEY: ""
 
