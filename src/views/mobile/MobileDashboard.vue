@@ -88,6 +88,20 @@ onMounted(async () => {
           <span class="action-text">库存管理</span>
           <span class="material-symbols-outlined action-arrow">chevron_right</span>
         </div>
+        <div class="card-mobile action-item" @click="router.push('/mobile/finance')">
+          <div class="action-icon action-icon-primary">
+            <span class="material-symbols-outlined">payments</span>
+          </div>
+          <span class="action-text">财务管理</span>
+          <span class="material-symbols-outlined action-arrow">chevron_right</span>
+        </div>
+        <div class="card-mobile action-item" @click="router.push('/mobile/rack')">
+          <div class="action-icon action-icon-secondary">
+            <span class="material-symbols-outlined">checkroom</span>
+          </div>
+          <span class="action-text">货架管理</span>
+          <span class="material-symbols-outlined action-arrow">chevron_right</span>
+        </div>
       </div>
     </section>
   </div>

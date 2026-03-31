@@ -9,8 +9,8 @@ const navItems = [
   { path: '/mobile', icon: 'dashboard', label: '首页' },
   { path: '/mobile/orders', icon: 'local_laundry_service', label: '订单' },
   { path: '/mobile/customers', icon: 'group', label: '客户' },
-  { path: '/mobile/finance', icon: 'payments', label: '财务' },
-  { path: '/mobile/more', icon: 'more_horiz', label: '更多' },
+  { path: '/mobile/inventory', icon: 'inventory_2', label: '库存' },
+  { path: '/mobile/rack', icon: 'checkroom', label: '货架' },
 ]
 
 const isActive = (path: string) => {

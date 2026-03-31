@@ -18,11 +18,17 @@ const router = createRouter({
     { path: '/inventory', name: 'inventory', component: () => import('@/views/InventoryView.vue'), meta: { title: '库存管理', requiresAuth: true } },
     { path: '/rack', name: 'rack', component: () => import('@/views/RackView.vue'), meta: { title: '货架管理', requiresAuth: true } },
     // Mobile routes
-    { path: '/mobile', name: 'mobile-dashboard', component: () => import('@/views/mobile/MobileLayout.vue'), meta: { title: '移动端', requiresAuth: true }, children: [
+    { path: '/mobile', name: 'mobile-layout', component: () => import('@/views/mobile/MobileLayout.vue'), meta: { title: '移动端', requiresAuth: true }, children: [
       { path: '', name: 'mobile-home', component: () => import('@/views/mobile/MobileDashboard.vue'), meta: { title: '首页', requiresAuth: true } },
       { path: 'orders', name: 'mobile-orders', component: () => import('@/views/mobile/MobileOrders.vue'), meta: { title: '订单', requiresAuth: true } },
+      { path: 'orders/create', name: 'mobile-order-create', component: () => import('@/views/OrderCreateView.vue'), meta: { title: '新建订单', requiresAuth: true } },
+      { path: 'orders/:id', name: 'mobile-order-detail', component: () => import('@/views/mobile/MobileOrderDetail.vue'), meta: { title: '订单详情', requiresAuth: true } },
       { path: 'customers', name: 'mobile-customers', component: () => import('@/views/mobile/MobileCustomers.vue'), meta: { title: '客户', requiresAuth: true } },
+      { path: 'customers/create', name: 'mobile-customer-create', component: () => import('@/views/CustomerListView.vue'), meta: { title: '新建客户', requiresAuth: true } },
+      { path: 'customers/:id', name: 'mobile-customer-detail', component: () => import('@/views/mobile/MobileCustomerDetail.vue'), meta: { title: '客户详情', requiresAuth: true } },
       { path: 'finance', name: 'mobile-finance', component: () => import('@/views/mobile/MobileFinance.vue'), meta: { title: '财务', requiresAuth: true } },
+      { path: 'inventory', name: 'mobile-inventory', component: () => import('@/views/mobile/MobileInventory.vue'), meta: { title: '库存', requiresAuth: true } },
+      { path: 'rack', name: 'mobile-rack', component: () => import('@/views/mobile/MobileRack.vue'), meta: { title: '货架', requiresAuth: true } },
     ]},
   ],
 })
