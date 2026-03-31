@@ -11,6 +11,7 @@ const searchQuery = ref('')
 const loading = ref(true)
 
 const tabs = [
+  { key: 'today', label: '今日' },
   { key: 'all', label: '全部' },
   { key: '未开始', label: '待处理' },
   { key: '已付款', label: '进行中' },
@@ -19,9 +20,16 @@ const tabs = [
 
 const filteredOrders = computed(() => {
   let list = orders.value
-  if (activeTab.value !== 'all') {
+
+  // Filter by tab
+  if (activeTab.value === 'today') {
+    const today = new Date().toISOString().split('T')[0]
+    list = list.filter(o => o.created_at && o.created_at.startsWith(today))
+  } else if (activeTab.value !== 'all') {
     list = list.filter(o => o.status === activeTab.value)
   }
+
+  // Filter by search
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     list = list.filter(o =>

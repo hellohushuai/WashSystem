@@ -47,7 +47,7 @@ onMounted(async () => {
 
     <!-- Stats Grid: 两列统计卡片 -->
     <section class="grid grid-cols-2 gap-4 mb-6">
-      <div class="card-mobile stat-card">
+      <div class="card-mobile stat-card" @click="router.push('/mobile/orders')">
         <div class="stat-icon stat-icon-primary">
           <span class="material-symbols-outlined">local_laundry_service</span>
         </div>

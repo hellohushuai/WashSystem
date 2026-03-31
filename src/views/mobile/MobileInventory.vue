@@ -1,10 +1,23 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { useInventoryStore, type InventoryItem } from '@/stores/inventory'
+import { useInventoryStore } from '@/stores/inventory'
 
 const store = useInventoryStore()
 const loading = ref(true)
 const searchQuery = ref('')
+
+// Create modal
+const showCreateModal = ref(false)
+const creating = ref(false)
+const newItem = ref({
+  name: '',
+  category: '',
+  quantity: 0,
+  unit: '件',
+  min_quantity: 10,
+})
+
+const categories = ['洗涤剂', '柔顺剂', '包装材料', '配件', '其他']
 
 const filteredItems = computed(() => {
   if (!searchQuery.value) return store.items
@@ -19,10 +32,6 @@ const lowStockItems = computed(() => {
   return store.items.filter(item => item.quantity <= item.min_quantity)
 })
 
-const formatPrice = (price: number) => {
-  return `¥${price.toFixed(2)}`
-}
-
 onMounted(async () => {
   try {
     await store.loadItems()
@@ -32,6 +41,25 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+async function createItem() {
+  if (!newItem.value.name || !newItem.value.category) {
+    alert('请填写名称和分类')
+    return
+  }
+
+  creating.value = true
+  try {
+    await store.createItem(newItem.value)
+    alert('添加成功！')
+    showCreateModal.value = false
+    newItem.value = { name: '', category: '', quantity: 0, unit: '件', min_quantity: 10 }
+  } catch (e: any) {
+    alert(e.message || '添加失败')
+  } finally {
+    creating.value = false
+  }
+}
 </script>
 
 <template>
@@ -96,6 +124,53 @@ onMounted(async () => {
             </span>
             <span class="min-stock">最小: {{ item.min_quantity }}</span>
           </div>
+        </div>
+      </div>
+
+      <!-- FAB -->
+      <button class="fab" @click="showCreateModal = true">
+        <span class="material-symbols-outlined">add</span>
+      </button>
+    </div>
+
+    <!-- Create Modal -->
+    <div v-if="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
+      <div class="modal-content">
+        <h3 class="modal-title">新增库存</h3>
+
+        <div class="form-group">
+          <label class="form-label">名称 *</label>
+          <input v-model="newItem.name" type="text" class="input-mobile" placeholder="物品名称" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">分类 *</label>
+          <select v-model="newItem.category" class="input-mobile">
+            <option value="">选择分类</option>
+            <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">数量</label>
+          <input v-model.number="newItem.quantity" type="number" class="input-mobile" min="0" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">单位</label>
+          <input v-model="newItem.unit" type="text" class="input-mobile" placeholder="件/袋/箱" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">最低库存</label>
+          <input v-model.number="newItem.min_quantity" type="number" class="input-mobile" min="0" />
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="showCreateModal = false">取消</button>
+          <button class="btn-confirm" @click="createItem" :disabled="creating">
+            {{ creating ? '添加中...' : '确认添加' }}
+          </button>
         </div>
       </div>
     </div>
@@ -288,5 +363,107 @@ onMounted(async () => {
 .min-stock {
   font-size: 11px;
   color: var(--on-surface-variant);
+}
+
+/* FAB */
+.fab {
+  position: fixed;
+  right: 20px;
+  bottom: 80px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 99, 151, 0.4);
+}
+
+.fab .material-symbols-outlined {
+  font-size: 28px;
+  color: white;
+}
+
+.fab:active {
+  transform: scale(0.95);
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-content {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.modal-title {
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--on-surface);
+  margin-bottom: 8px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.btn-cancel {
+  flex: 1;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--on-surface);
+  background: var(--surface-container);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.btn-confirm {
+  flex: 1;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  color: white;
+  background: var(--primary);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.btn-confirm:disabled {
+  opacity: 0.6;
 }
 </style>

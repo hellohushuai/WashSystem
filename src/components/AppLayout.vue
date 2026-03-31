@@ -1,32 +1,41 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import SidebarNav from './SidebarNav.vue'
 import MobileNav from './MobileNav.vue'
 
-const router = useRouter()
 const route = useRoute()
 
-const isMobile = ref(window.innerWidth < 768)
-
-const isMobileDevice = () => {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+// 检测是否为 Android/Capacitor 平台
+const isAndroidPlatform = () => {
+  if (typeof window !== 'undefined' && (window as any).Capacitor) {
+    const platform = (window as any).Capacitor.getPlatform()
+    if (platform === 'android') return true
+  }
+  if (/Android/i.test(navigator.userAgent)) {
+    return true
+  }
+  return false
 }
 
-const handleResize = () => {
-  isMobile.value = window.innerWidth < 768
+const isMobile = ref(false)
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768 || isAndroidPlatform()
 }
+
+// 检查是否在移动端路由下（移动端页面有自己的底部导航）
+const isMobileRoute = computed(() => route.path.startsWith('/mobile'))
 
 onMounted(() => {
-  // 移动设备自动跳转到移动端页面（登录页面除外）
-  if (isMobileDevice() && !route.path.startsWith('/mobile') && route.path !== '/login') {
-    router.push('/mobile')
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+  if ((window as any).Capacitor) {
+    (window as any).Capacitor.addListener('resume', checkMobile)
   }
-  window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
+  window.removeEventListener('resize', checkMobile)
 })
 </script>
 
@@ -36,7 +45,8 @@ onUnmounted(() => {
     <main class="main-content" :class="{ 'mobile-mode': isMobile }">
       <router-view />
     </main>
-    <MobileNav v-if="isMobile" />
+    <!-- 移动端路由有自己底部导航，不再显示AppLayout的MobileNav -->
+    <MobileNav v-if="isMobile && !isMobileRoute" />
   </div>
 </template>
 

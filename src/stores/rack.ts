@@ -16,6 +16,8 @@ export interface RackHook {
   customer_name?: string
   order_no?: string
   order_id?: number
+  // additional fields for mobile
+  label?: string
 }
 
 export const useRackStore = defineStore('rack', () => {

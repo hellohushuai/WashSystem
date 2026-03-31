@@ -23,6 +23,9 @@ export interface Customer {
   // joined from membership_levels
   level_name?: string
   discount?: number
+  // additional fields for mobile views
+  membership_level?: { name: string }
+  total_spent?: number
 }
 
 export const useCustomerStore = defineStore('customers', () => {

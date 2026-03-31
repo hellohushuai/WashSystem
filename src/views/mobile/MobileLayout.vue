@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
-import { computed } from 'vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -11,6 +10,7 @@ const navItems = [
   { path: '/mobile/customers', icon: 'group', label: '客户' },
   { path: '/mobile/inventory', icon: 'inventory_2', label: '库存' },
   { path: '/mobile/rack', icon: 'checkroom', label: '货架' },
+  { path: '/mobile/profile', icon: 'person', label: '我的' },
 ]
 
 const isActive = (path: string) => {

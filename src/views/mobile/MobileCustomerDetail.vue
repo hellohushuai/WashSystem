@@ -13,8 +13,6 @@ const customer = ref<Customer | null>(null)
 const orders = ref<Order[]>([])
 const loading = ref(true)
 
-const customerId = computed(() => Number(route.params.id))
-
 const formatDate = (date: string | null) => {
   if (!date) return '-'
   return new Date(date).toLocaleString('zh-CN')
@@ -32,8 +30,6 @@ const getStatusClass = (status: string) => {
   }
   return map[status] || 'status-pending'
 }
-
-import { computed } from 'vue'
 
 onMounted(async () => {
   try {

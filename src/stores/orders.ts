@@ -29,6 +29,8 @@ export interface Order {
   customer_name?: string
   customer_phone?: string
   item_count?: number
+  // additional fields for mobile
+  pickup_date?: string
 }
 
 export interface OrderItem {
@@ -40,6 +42,9 @@ export interface OrderItem {
   hook_no: number | null
   is_picked_up: number
   notes: string
+  // additional fields for mobile
+  garment_name?: string
+  service_name?: string
 }
 
 export const useOrderStore = defineStore('orders', () => {
