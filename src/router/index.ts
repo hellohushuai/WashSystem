@@ -17,6 +17,13 @@ const router = createRouter({
     { path: '/finance', name: 'finance', component: () => import('@/views/FinanceView.vue'), meta: { title: '财务管理', requiresAuth: true } },
     { path: '/inventory', name: 'inventory', component: () => import('@/views/InventoryView.vue'), meta: { title: '库存管理', requiresAuth: true } },
     { path: '/rack', name: 'rack', component: () => import('@/views/RackView.vue'), meta: { title: '货架管理', requiresAuth: true } },
+    // Mobile routes
+    { path: '/mobile', name: 'mobile-dashboard', component: () => import('@/views/mobile/MobileLayout.vue'), meta: { title: '移动端', requiresAuth: true }, children: [
+      { path: '', name: 'mobile-home', component: () => import('@/views/mobile/MobileDashboard.vue'), meta: { title: '首页', requiresAuth: true } },
+      { path: 'orders', name: 'mobile-orders', component: () => import('@/views/mobile/MobileOrders.vue'), meta: { title: '订单', requiresAuth: true } },
+      { path: 'customers', name: 'mobile-customers', component: () => import('@/views/mobile/MobileCustomers.vue'), meta: { title: '客户', requiresAuth: true } },
+      { path: 'finance', name: 'mobile-finance', component: () => import('@/views/mobile/MobileFinance.vue'), meta: { title: '财务', requiresAuth: true } },
+    ]},
   ],
 })
 

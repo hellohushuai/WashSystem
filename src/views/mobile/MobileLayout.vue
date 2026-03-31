@@ -35,7 +35,7 @@ const navigate = (path: string) => {
 
     <!-- Main Content -->
     <main class="main-content">
-      <slot></slot>
+      <router-view></router-view>
     </main>
 
     <!-- Bottom Navigation -->
