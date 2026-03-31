@@ -101,16 +101,16 @@ jobs:
           NDK_HOME="$ANDROID_HOME/ndk/26.1.10909125"
           echo "ANDROID_NDK_HOME=$NDK_HOME" >> $GITHUB_ENV
           echo "NDK_HOME=$NDK_HOME" >> $GITHUB_ENV
-          echo "PATH=$NDK_HOME/toolchains/llvm/prebuilt/darwin-aarch64/bin:$PATH" >> $GITHUB_ENV
+          echo "PATH=$NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64/bin:$PATH" >> $GITHUB_ENV
 
       - name: Build Tauri for Android
         run: |
           NDK="$ANDROID_HOME/ndk/26.1.10909125"
-          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$NDK/toolchains/llvm/prebuilt/darwin-aarch64/bin/aarch64-linux-android21-clang"
-          export CC_aarch64_linux_android="$NDK/toolchains/llvm/prebuilt/darwin-aarch64/bin/aarch64-linux-android21-clang"
-          export CXX_aarch64_linux_android="$NDK/toolchains/llvm/prebuilt/darwin-aarch64/bin/aarch64-linux-android21-clang++"
-          export TARGET_CC="$NDK/toolchains/llvm/prebuilt/darwin-aarch64/bin/aarch64-linux-android21-clang"
-          export TARGET_CXX="$NDK/toolchains/llvm/prebuilt/darwin-aarch64/bin/aarch64-linux-android21-clang++"
+          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$NDK/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android21-clang"
+          export CC_aarch64_linux_android="$NDK/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android21-clang"
+          export CXX_aarch64_linux_android="$NDK/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android21-clang++"
+          export TARGET_CC="$NDK/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android21-clang"
+          export TARGET_CXX="$NDK/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android21-clang++"
           npm run tauri build -- --target aarch64-linux-android
         env:
           TAURI_SIGNING_PRIVATE_KEY: ""
