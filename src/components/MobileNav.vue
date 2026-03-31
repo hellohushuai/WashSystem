@@ -39,17 +39,25 @@ const isMobile = computed(() => window.innerWidth < 768)
   display: flex;
   background: #fff;
   border-top: 1px solid var(--border-color);
-  padding: 8px 0;
+  padding: 6px 0;
   z-index: 1000;
+  height: 56px;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
 }
 .nav-item {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: 12px;
+  justify-content: center;
+  font-size: 11px;
   cursor: pointer;
   color: var(--text-secondary);
+  gap: 2px;
+  min-height: 44px;
+}
+.nav-item .el-icon {
+  font-size: 20px;
 }
 .nav-item.active {
   color: var(--el-color-primary);

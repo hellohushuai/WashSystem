@@ -20,6 +20,11 @@ dist-ssr
 .worktrees
 worktrees
 
+# Android build
+android
+android-apk/*.apk
+capacitor.config.ts
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

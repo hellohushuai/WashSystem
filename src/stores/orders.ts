@@ -62,8 +62,15 @@ export const useOrderStore = defineStore('orders', () => {
 
       if (error) throw error
 
-      const seq = String((data?.length ?? 0) + 1).padStart(3, '0')
-      return `${prefix}${seq}`
+      let seq = 1
+      if (data && data.length > 0) {
+        const lastOrderNo = data[0].order_no
+        const lastSeq = parseInt(lastOrderNo.replace(prefix, ''), 10)
+        if (!isNaN(lastSeq)) {
+          seq = lastSeq + 1
+        }
+      }
+      return `${prefix}${String(seq).padStart(3, '0')}`
     } catch (error) {
       console.error('Failed to generate order number:', error)
       throw error

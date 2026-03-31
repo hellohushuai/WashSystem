@@ -20,11 +20,11 @@ onUnmounted(() => {
 
 <template>
   <div class="app-layout">
-    <SidebarNav />
+    <SidebarNav v-if="!isMobile" />
     <main class="main-content" :class="{ 'mobile-mode': isMobile }">
       <router-view />
     </main>
-    <MobileNav />
+    <MobileNav v-if="isMobile" />
   </div>
 </template>
 

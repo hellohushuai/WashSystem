@@ -11,6 +11,195 @@
   --primary-color: #409eff;
 }
 
+/* Mobile-specific styles (Android 6.8 inch - approx 412px width) */
+@media screen and (max-width: 480px) {
+  :root {
+    --base-font-size: 14px;
+    --card-padding: 12px;
+    --form-item-margin: 12px;
+  }
+
+  body {
+    font-size: 14px !important;
+  }
+
+  /* Login form */
+  .login-card {
+    width: 90% !important;
+    max-width: 360px !important;
+    padding: 20px !important;
+  }
+
+  /* Card adjustments */
+  .el-card {
+    border-radius: 8px !important;
+  }
+
+  .el-card__body {
+    padding: var(--card-padding, 12px) !important;
+  }
+
+  .el-form-item {
+    margin-bottom: var(--form-item-margin, 12px) !important;
+  }
+
+  /* Input adjustments */
+  .el-input__wrapper {
+    padding: 4px 8px !important;
+  }
+
+  .el-button {
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+    min-height: 36px !important;
+  }
+
+  /* Table adjustments */
+  .el-table {
+    font-size: 12px !important;
+  }
+
+  .el-table th,
+  .el-table td {
+    padding: 8px 4px !important;
+  }
+
+  /* Make tables horizontally scrollable */
+  .el-table__body-wrapper {
+    overflow-x: auto !important;
+  }
+
+  /* Dialog adjustments */
+  .el-dialog {
+    width: 90% !important;
+    max-width: 400px !important;
+    margin: 10vh auto !important;
+  }
+
+  .el-dialog__header {
+    padding: 12px 12px 8px !important;
+  }
+
+  .el-dialog__body {
+    padding: 12px !important;
+  }
+
+  /* Form elements full width on mobile */
+  .el-select {
+    width: 100% !important;
+  }
+
+  .el-input {
+    width: 100% !important;
+  }
+
+  /* Dashboard stats - 2 columns instead of 3 */
+  .el-row .el-col:nth-child(3) {
+    margin-top: 12px !important;
+  }
+
+  .el-col {
+    margin-bottom: 12px !important;
+  }
+
+  /* Dashboard title */
+  .dashboard h2 {
+    font-size: 18px !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* Finance summary grid */
+  .finance-summary {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  /* Form layouts */
+  .el-form-item__label {
+    font-size: 13px !important;
+  }
+
+  /* Order items */
+  .order-item {
+    padding: 8px !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Customer cards */
+  .customer-card {
+    padding: 10px !important;
+  }
+
+  /* Search bar adjustments */
+  .search-bar {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .search-bar .el-input {
+    width: 100% !important;
+  }
+
+  /* Bottom navigation */
+  .mobile-nav {
+    padding: 8px 16px !important;
+    height: 56px !important;
+  }
+
+  .mobile-nav .nav-item {
+    font-size: 11px !important;
+  }
+
+  /* Action buttons in tables */
+  .el-table .el-button + .el-button {
+    margin-left: 4px !important;
+  }
+
+  .el-table .el-button {
+    padding: 6px 8px !important;
+    font-size: 12px !important;
+  }
+
+  /* Tags */
+  .el-tag {
+    font-size: 11px !important;
+    padding: 0 6px !important;
+  }
+
+  /* Pagination */
+  .el-pagination {
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+  }
+
+  .el-pagination .el-pager li {
+    min-width: 28px !important;
+  }
+
+  /* Clear some fixed widths */
+  .el-table-column {
+    min-width: 80px !important;
+  }
+
+  /* Date picker adjustments */
+  .el-date-editor.el-input {
+    width: 100% !important;
+  }
+
+  /* Stats card */
+  .stats-card {
+    padding: 12px !important;
+  }
+
+  .stats-card .stat-value {
+    font-size: 18px !important;
+  }
+
+  .stats-card .stat-title {
+    font-size: 12px !important;
+  }
+}
+
 .theme-dark {
   --sidebar-bg: #141414;
   --sidebar-hover: #2a2a2b;

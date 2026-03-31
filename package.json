@@ -10,6 +10,9 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
     "@element-plus/icons-vue": "^2.3.2",
     "@supabase/supabase-js": "^2.100.1",
     "@tauri-apps/api": "^2",

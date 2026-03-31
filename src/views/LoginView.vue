@@ -129,4 +129,12 @@ async function handleRegister() {
   width: 100%;
   color: #909399;
 }
+
+@media screen and (max-width: 480px) {
+  .login-card {
+    width: 90% !important;
+    max-width: 360px !important;
+    padding: 20px 16px !important;
+  }
+}
 </style>
