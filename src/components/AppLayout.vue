@@ -1,15 +1,27 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import SidebarNav from './SidebarNav.vue'
 import MobileNav from './MobileNav.vue'
 
+const router = useRouter()
+const route = useRoute()
+
 const isMobile = ref(window.innerWidth < 768)
+
+const isMobileDevice = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+}
 
 const handleResize = () => {
   isMobile.value = window.innerWidth < 768
 }
 
 onMounted(() => {
+  // 移动设备自动跳转到移动端页面（登录页面除外）
+  if (isMobileDevice() && !route.path.startsWith('/mobile') && route.path !== '/login') {
+    router.push('/mobile')
+  }
   window.addEventListener('resize', handleResize)
 })
 
