@@ -1,0 +1,638 @@
+/* Mobile Global Styles - Material Design 3 */
+
+/* ========================================
+   Google Fonts Import
+   ======================================== */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+/* ========================================
+   CSS Variables (Material Design 3)
+   ======================================== */
+:root {
+  /* Primary Colors */
+  --primary: #006397;
+  --primary-container: #3498db;
+  --on-primary: #ffffff;
+  --on-primary-container: #002d47;
+  --primary-fixed: #cce5ff;
+  --primary-fixed-dim: #92ccff;
+  --on-primary-fixed: #001d31;
+  --on-primary-fixed-variant: #004b73;
+
+  /* Tertiary Colors (Green) */
+  --tertiary: #006d37;
+  --tertiary-container: #00a757;
+  --on-tertiary: #ffffff;
+  --on-tertiary-container: #003216;
+  --tertiary-fixed: #6bfe9c;
+  --tertiary-fixed-dim: #4ae183;
+  --on-tertiary-fixed: #00210c;
+  --on-tertiary-fixed-variant: #005228;
+
+  /* Secondary Colors */
+  --secondary: #5c5f61;
+  --secondary-container: #e0e3e5;
+  --on-secondary: #ffffff;
+  --on-secondary-container: #626567;
+  --secondary-fixed: #e0e3e5;
+  --secondary-fixed-dim: #c4c7c9;
+  --on-secondary-fixed: #191c1e;
+  --on-secondary-fixed-variant: #444749;
+
+  /* Surface Colors */
+  --surface: #f7f9fb;
+  --surface-bright: #f7f9fb;
+  --surface-container: #eceef0;
+  --surface-container-high: #e6e8ea;
+  --surface-container-highest: #e0e3e5;
+  --surface-container-low: #f2f4f6;
+  --surface-container-lowest: #ffffff;
+  --surface-dim: #d8dadc;
+  --surface-variant: #e0e3e5;
+  --surface-tint: #006397;
+
+  /* On Colors */
+  --on-surface: #191c1e;
+  --on-surface-variant: #3f4850;
+  --on-background: #191c1e;
+
+  /* Outline */
+  --outline: #707881;
+  --outline-variant: #bfc7d2;
+
+  /* Error */
+  --error: #ba1a1a;
+  --error-container: #ffdad6;
+  --on-error: #ffffff;
+  --on-error-container: #93000a;
+
+  /* Inverse */
+  --inverse-on-surface: #eff1f3;
+  --inverse-surface: #2d3133;
+  --inverse-primary: #92ccff;
+
+  /* Background */
+  --background: #f7f9fb;
+
+  /* Typography */
+  --font-headline: 'Manrope', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-label: 'Inter', sans-serif;
+}
+
+/* ========================================
+   Base Styles
+   ======================================== */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--surface);
+  color: var(--on-surface);
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========================================
+   Typography Utility Classes
+   ======================================== */
+.font-headline {
+  font-family: var(--font-headline);
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+.font-label {
+  font-family: var(--font-label);
+}
+
+/* ========================================
+   Material Symbols Outlined
+   ======================================== */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.material-symbols-outlined.filled {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* ========================================
+   Capsule Button
+   ======================================== */
+.btn-capsule {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 20px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.btn-capsule-primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.btn-capsule-primary:hover {
+  background: #005080;
+}
+
+.btn-capsule-secondary {
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+}
+
+.btn-capsule-secondary:hover {
+  background: #d0d3d5;
+}
+
+.btn-capsule-tertiary {
+  background: var(--tertiary);
+  color: var(--on-tertiary);
+}
+
+.btn-capsule-tertiary:hover {
+  background: #00552b;
+}
+
+.btn-capsule-outline {
+  background: transparent;
+  border: 2px solid var(--primary);
+  color: var(--primary);
+}
+
+.btn-capsule-outline:hover {
+  background: rgba(0, 99, 151, 0.1);
+}
+
+/* ========================================
+   Mobile Card
+   ======================================== */
+.card-mobile {
+  background: var(--surface-container-lowest);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.card-mobile-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.card-mobile-elevated {
+  background: var(--surface-container-lowest);
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* ========================================
+   Mobile Input
+   ======================================== */
+.input-mobile {
+  width: 100%;
+  padding: 12px 16px;
+  background: #f2f4f6;
+  border: none;
+  border-radius: 12px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--on-surface);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.input-mobile:focus {
+  background: #e8eaec;
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.input-mobile::placeholder {
+  color: var(--on-surface-variant);
+}
+
+.input-mobile-search {
+  width: 100%;
+  padding: 12px 16px 12px 44px;
+  background: var(--surface-container-low);
+  border: none;
+  border-radius: 9999px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--on-surface);
+  outline: none;
+}
+
+.input-mobile-search:focus {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+/* ========================================
+   Bottom Navigation
+   ======================================== */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 12px 16px 24px;
+  background: white;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+  z-index: 50;
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 16px;
+  color: var(--on-surface-variant);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bottom-nav-item.active {
+  color: var(--primary);
+}
+
+.bottom-nav-item .material-symbols-outlined {
+  font-size: 24px;
+}
+
+.bottom-nav-item.active .material-symbols-outlined {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* ========================================
+   Hero Section
+   ======================================== */
+.hero-card {
+  background: linear-gradient(to bottom right, var(--primary), var(--primary-container));
+  color: var(--on-primary);
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(25, 28, 30, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(12px);
+  padding: 4px 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ========================================
+   Stats Card
+   ======================================== */
+.stats-card {
+  background: var(--surface-container-lowest);
+  padding: 20px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.stats-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+.stats-icon-primary {
+  background: rgba(0, 99, 151, 0.1);
+  color: var(--primary);
+}
+
+.stats-icon-tertiary {
+  background: rgba(0, 109, 55, 0.1);
+  color: var(--tertiary);
+}
+
+/* ========================================
+   Section Title
+   ======================================== */
+.section-title {
+  font-family: var(--font-headline);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--on-surface);
+  margin: 0 0 16px 0;
+}
+
+.section-subtitle {
+  font-family: var(--font-label);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--on-surface-variant);
+  opacity: 0.8;
+}
+
+/* ========================================
+   Grid Layouts
+   ======================================== */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.bento-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+/* ========================================
+   Tag / Badge
+   ======================================== */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tag-primary {
+  background: var(--primary-fixed);
+  color: var(--on-primary-fixed-variant);
+}
+
+.tag-success {
+  background: var(--tertiary-fixed);
+  color: var(--on-tertiary-fixed-variant);
+}
+
+.tag-warning {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.tag-error {
+  background: var(--error-container);
+  color: var(--on-error-container);
+}
+
+/* ========================================
+   List Item
+   ======================================== */
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--surface-container-lowest);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.list-item:active {
+  background: var(--surface-container-low);
+}
+
+.list-item-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--primary-fixed);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+}
+
+.list-item-content {
+  flex: 1;
+}
+
+.list-item-title {
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.list-item-subtitle {
+  font-size: 13px;
+  color: var(--on-surface-variant);
+}
+
+/* ========================================
+   FAB (Floating Action Button)
+   ======================================== */
+.fab {
+  position: fixed;
+  bottom: 80px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--primary);
+  color: var(--on-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 99, 151, 0.3);
+  cursor: pointer;
+  border: none;
+  z-index: 40;
+  transition: all 0.2s ease;
+}
+
+.fab:hover {
+  transform: scale(1.05);
+}
+
+.fab .material-symbols-outlined {
+  font-size: 28px;
+}
+
+/* ========================================
+   App Header / TopAppBar
+   ======================================== */
+.app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: var(--surface);
+  z-index: 50;
+}
+
+.app-header-title {
+  font-family: var(--font-headline);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: -0.02em;
+}
+
+/* ========================================
+   Main Content Container
+   ======================================== */
+.main-content {
+  padding-top: 80px;
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-bottom: 100px;
+}
+
+/* ========================================
+   Progress Bar
+   ======================================== */
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--surface-container-high);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.progress-bar-success .progress-bar-fill {
+  background: var(--tertiary);
+}
+
+/* ========================================
+   Avatar
+   ======================================== */
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.avatar-sm {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+}
+
+.avatar-lg {
+  width: 56px;
+  height: 56px;
+  font-size: 18px;
+}
+
+/* ========================================
+   Utility Classes
+   ======================================== */
+.text-primary { color: var(--primary); }
+.text-tertiary { color: var(--tertiary); }
+.text-secondary { color: var(--secondary); }
+.text-on-surface { color: var(--on-surface); }
+.text-on-surface-variant { color: var(--on-surface-variant); }
+
+.bg-surface { background-color: var(--surface); }
+.bg-surface-container-lowest { background-color: var(--surface-container-lowest); }
+.bg-surface-container-low { background-color: var(--surface-container-low); }
+.bg-surface-container-high { background-color: var(--surface-container-high); }
+
+.rounded-xl { border-radius: 12px; }
+.rounded-2xl { border-radius: 16px; }
+.rounded-full { border-radius: 9999px; }
+
+.font-bold { font-weight: 700; }
+.font-semibold { font-weight: 600; }
+.font-medium { font-weight: 500; }
+
+.tracking-tight { letter-spacing: -0.02em; }
+.tracking-wider { letter-spacing: 0.05em; }
+
+.uppercase { text-transform: uppercase; }
+
+.mt-1 { margin-top: 4px; }
+.mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 12px; }
+.mt-4 { margin-top: 16px; }
+.mb-2 { margin-bottom: 8px; }
+.mb-3 { margin-bottom: 12px; }
+.mb-4 { margin-bottom: 16px; }
+.mb-8 { margin-bottom: 32px; }
+
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.gap-4 { gap: 16px; }
+
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+
+.p-4 { padding: 16px; }
+.p-5 { padding: 20px; }
+.p-6 { padding: 24px; }
+.px-6 { padding-left: 24px; padding-right: 24px; }
+.py-4 { padding-top: 16px; padding-bottom: 16px; }
+
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+
+.relative { position: relative; }
+.absolute { position: absolute; }
+.fixed { position: fixed; }
+
+.z-50 { z-index: 50; }
+.z-40 { z-index: 40; }
+
+.opacity-80 { opacity: 0.8; }
+.opacity-50 { opacity: 0.5; }
+
+.shadow { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); }
+.shadow-lg { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08); }
+
+.overflow-hidden { overflow: hidden; }
