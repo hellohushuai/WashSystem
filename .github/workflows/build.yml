@@ -70,8 +70,6 @@ jobs:
 
   build-android:
     runs-on: ubuntu-latest
-    container:
-      image: nickdiego/android-ndk:r26b
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -81,6 +79,14 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: Install NDK
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;26.1.10909125"
+
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -89,15 +95,16 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      - name: Build Tauri for Android
+      - name: Configure NDK
         run: |
-          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang"
-          export CC_aarch64_linux_android="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang"
-          export CXX_aarch64_linux_android="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++"
-          npm run tauri build -- --target aarch64-linux-android
+          NDK_HOME="$ANDROID_HOME/ndk/26.1.10909125"
+          echo "ANDROID_NDK_HOME=$NDK_HOME" >> $GITHUB_ENV
+          echo "NDK_HOME=$NDK_HOME" >> $GITHUB_ENV
+
+      - name: Build Tauri for Android
+        run: npm run tauri build -- --target aarch64-linux-android
         env:
           TAURI_SIGNING_PRIVATE_KEY: ""
-          ANDROID_NDK_ROOT: /opt/android-ndk
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
