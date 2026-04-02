@@ -110,7 +110,9 @@ jobs:
           export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang"
           export CC_aarch64_linux_android="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang"
           export CXX_aarch64_linux_android="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++"
-          npm run tauri build -- --target aarch64-linux-android
+          # Build with --debug first to ensure dependencies are cached, then build release
+          npm run tauri build -- --debug
+          npm run tauri build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ""
 
